@@ -10,11 +10,11 @@
 > ```bash
 > adb shell pm enable --user 0 com.google.android.apps.tv.launcherx
 > adb shell pm enable --user 0 com.google.android.tungsten.setupwraith
-> adb shell 'cmd package set-home-activity --user 0 $(cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME com.google.android.apps.tv.launcherx | tail -n 1)'
 > adb shell pm uninstall com.gathin.tvhome   # không bắt buộc
+> adb shell 'cmd package set-home-activity --user 0 $(cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME com.google.android.apps.tv.launcherx | tail -n 1)'
 > ```
 >
-> Lệnh thứ hai bật lại setupwraith; phải bật lại nó trước khi khôi phục cài đặt gốc. TV có launcher gốc khác launcherx thì thay tên gói ở lệnh đầu và lệnh thứ ba; lệnh thứ ba tự tìm activity Home của gói đó trên TV.
+> Lệnh thứ hai bật lại setupwraith; phải bật lại nó trước khi khôi phục cài đặt gốc. TV có launcher gốc khác launcherx thì thay tên gói ở lệnh đầu và lệnh cuối; lệnh cuối tự tìm activity Home của gói đó trên TV. Lệnh đặt Home để cuối cùng: mỗi lần bật setupwraith hay gỡ app, Android quên lựa chọn Home, và trên Google TV 14 ứng viên kế tiếp có thể là RecoveryActivity của setupwraith, chạy lỗi lặp lại.
 
 <p align="center">
   Read in: <a href="README.he.md" lang="he" dir="rtl">עברית</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.zh-TW.md">正體中文</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.ja.md">日本語</a> · <a href="README.it.md">Italiano</a> · <a href="README.pt-BR.md">Português</a> · <a href="README.nl.md">Nederlands</a> · <a href="README.de.md">Deutsch</a> · <a href="README.uk.md">Українська</a> · <a href="README.tr.md">Türkçe</a> · <a href="README.uz.md">Oʻzbekcha</a> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a>

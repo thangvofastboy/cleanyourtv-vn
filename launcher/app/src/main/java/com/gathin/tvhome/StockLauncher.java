@@ -34,14 +34,19 @@ final class StockLauncher {
         return LAUNCHERX;
     }
 
-    /** The adb commands, in order: the stock launcher back on, setupwraith back on, Home to it, this app removed. */
+    /**
+     * The adb commands, in order: the stock launcher back on, setupwraith back on, this app removed (optional), Home to
+     * the stock launcher. Home is set last: Android drops the Home preference whenever the set of Home apps changes
+     * (enabling setupwraith, removing this app), and on Google TV 14 the next candidate can be setupwraith's
+     * RecoveryActivity, which crash-loops (launcher/build-and-install.sh).
+     */
     static List<String> commands(String stock, String self) {
         // The Home activity is looked up on the TV for every launcher, launcherx included: its name differs by build.
         String home = "adb shell 'cmd package set-home-activity --user 0 $(cmd package resolve-activity --brief"
                 + " -a android.intent.action.MAIN -c android.intent.category.HOME " + stock + " | tail -n 1)'";
         return Arrays.asList("adb shell pm enable --user 0 " + stock,
                 "adb shell pm enable --user 0 " + SETUPWRAITH,
-                home,
-                "adb shell pm uninstall " + self);
+                "adb shell pm uninstall " + self,
+                home);
     }
 }

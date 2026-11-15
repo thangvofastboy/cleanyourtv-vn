@@ -177,7 +177,7 @@
     <string name="update_err_rate_limit">GitHub מגביל כרגע בדיקות מהרשת הזו; נסו שוב בעוד שעה</string>
     <string name="stock_return_label">חזרה למפעיל המקורי</string>
     <string name="stock_return_intro">מסך הבית נשאר במפעיל הזה; רק adb יכול להחזיר. ממחשב באותה רשת (adb connect &lt;כתובת הטלוויזיה&gt;), הריצו:</string>
-    <string name="stock_return_notes">הפקודה השנייה מפעילה מחדש את setupwraith: יש לעשות זאת לפני איפוס להגדרות היצרן. האחרונה מסירה את %1$s והיא אופציונלית. השלבים מופיעים גם ב:</string>
+    <string name="stock_return_notes">הפקודה השנייה מפעילה מחדש את setupwraith: יש לעשות זאת לפני איפוס להגדרות היצרן. השלישית מסירה את %1$s והיא אופציונלית; הריצו את האחרונה בכל מקרה, כי הסרת אפליקציה מאפסת את מסך הבית. השלבים מופיעים גם ב:</string>
     <string name="quick_sound">צליל</string>
     <string name="quick_sleep_timer">טיימר שינה</string>
     <string name="quick_bluetooth">שלטים ו-Bluetooth</string>

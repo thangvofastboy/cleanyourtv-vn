@@ -78,7 +78,7 @@
     <string name="update_err_rate_limit">GitHub is limiting checks from this network for now; try again in an hour</string>
     <string name="stock_return_label">Return to stock launcher</string>
     <string name="stock_return_intro">Home stays on this launcher; only adb can switch back. From a computer on the same network (adb connect &lt;TV address&gt;), run:</string>
-    <string name="stock_return_notes">The second command turns setupwraith back on: do it before any factory reset. The last one removes %1$s and is optional. The steps are also at:</string>
+    <string name="stock_return_notes">The second command turns setupwraith back on: do it before any factory reset. The third removes %1$s and is optional; run the last one after it anyway, since removing an app resets Home. The steps are also at:</string>
     <string name="wallpaper_label">Wallpaper</string>
     <string name="wallpaper_state">Wallpaper: %1$s</string>
     <string name="wallpaper_none">None</string>

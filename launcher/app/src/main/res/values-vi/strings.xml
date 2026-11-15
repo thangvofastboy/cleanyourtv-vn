@@ -112,7 +112,7 @@
     <string name="update_err_rate_limit">GitHub đang giới hạn lượt kiểm tra từ mạng này; thử lại sau một giờ</string>
     <string name="stock_return_label">Quay về launcher gốc</string>
     <string name="stock_return_intro">Home luôn ở launcher này; chỉ adb mới chuyển về được. Từ máy tính cùng mạng (adb connect &lt;địa chỉ TV&gt;), chạy:</string>
-    <string name="stock_return_notes">Lệnh thứ hai bật lại setupwraith: phải làm trước khi khôi phục cài đặt gốc. Lệnh cuối gỡ %1$s, không bắt buộc. Các bước cũng có ở:</string>
+    <string name="stock_return_notes">Lệnh thứ hai bật lại setupwraith: phải làm trước khi khôi phục cài đặt gốc. Lệnh thứ ba gỡ %1$s, không bắt buộc; dù có gỡ hay không vẫn chạy lệnh cuối, vì gỡ app làm Android quên Home. Các bước cũng có ở:</string>
     <string name="wallpaper_label">Hình nền</string>
     <string name="wallpaper_state">Hình nền: %1$s</string>
     <string name="wallpaper_none">Không có</string>

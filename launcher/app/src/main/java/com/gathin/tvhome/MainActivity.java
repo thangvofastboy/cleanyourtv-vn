@@ -2796,7 +2796,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         String festiveGreeting = festive ? festival.greetingText(getResources()) : "";
         if (!festiveGreeting.isEmpty()) {
             greeting.setText(festiveGreeting);
-            greeting.setTextColor(liftTowardsWhite(festival.accentColor(), 0.25f));
+            // The Vietnam skin's red is the focus colour; its greeting reads better in the flag's gold.
+            greeting.setTextColor(festival.isVietnam() ? Festival.STAR_GOLD
+                    : liftTowardsWhite(festival.accentColor(), 0.25f));
         } else {
             greeting.setText(greetingName.isEmpty() ? getString(res)
                     : getString(R.string.greeting_with_name, getString(res), greetingName));
