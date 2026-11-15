@@ -6,9 +6,15 @@
   "wallpaper_order": "sequential",
   "wallpaper_captions": false,
   "wallpaper_moods": {
-    "morning": ["01-dong-son-copper.jpg"],
-    "evening": ["02-dong-son-gold.jpg"],
-    "night": ["03-dong-son-verdigris.jpg"]
+    "morning": [
+      "01-dong-son-copper.jpg"
+    ],
+    "evening": [
+      "02-dong-son-gold.jpg"
+    ],
+    "night": [
+      "03-dong-son-verdigris.jpg"
+    ]
   },
   "wallpaper_true_color": false,
   "dock_glass": true,
@@ -52,5 +58,6 @@
     "com.cxinventor.file.explorer",
     "com.yablio.sendfilestotv",
     "org.localsend.localsend_app"
-  ]
+  ],
+  "wallpaper_dim": 35
 }

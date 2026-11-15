@@ -156,4 +156,17 @@
     <string name="clock_format_system">Hệ thống</string>
     <string name="clock_format_12">12 giờ</string>
     <string name="clock_format_24">24 giờ</string>
+    <!-- Card-style settings screens (this fork). -->
+    <string name="animations_label">Hiệu ứng</string>
+    <string name="section_appearance">Phong cách</string>
+    <string name="section_dock">Dock &amp; ứng dụng</string>
+    <string name="section_advanced">Nâng cao</string>
+    <string name="section_system">Hệ thống</string>
+    <string name="section_update">Cập nhật</string>
+    <string name="dock_edit_desc">Chọn ứng dụng trên thanh dock, rồi quay về màn hình chính</string>
+    <string name="reorder_desc">Đổi chỗ các ứng dụng trên màn hình chính</string>
+    <string name="tv_settings_desc">Hình ảnh, âm thanh, mạng và các mục khác</string>
+    <string name="stock_return_desc">Lệnh adb để đưa launcher gốc về làm màn hình chính</string>
+    <string name="update_version">Phiên bản %1$s</string>
+    <string name="update_new">Mới</string>
 </resources>

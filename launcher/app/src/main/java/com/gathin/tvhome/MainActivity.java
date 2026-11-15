@@ -106,6 +106,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     static final String ACTION_LAUNCHER_SETTINGS = "com.gathin.tvhome.action.LAUNCHER_SETTINGS";
     /** Sent by the "library" action word of app_keys: open the App library over Home (needs app_library). */
     static final String ACTION_APP_LIBRARY = "com.gathin.tvhome.action.APP_LIBRARY";
+    /** Sent by the quick panel's Edit dock row (this fork): start edit-dock mode on Home, once. */
+    static final String ACTION_DOCK_EDIT = "com.gathin.tvhome.action.DOCK_EDIT";
     /** The system input switcher, forwarded here by InputsRequestActivity while handle_view_inputs is on. */
     static final String ACTION_VIEW_INPUTS = "com.android.tv.action.VIEW_INPUTS";
     /** Tiles per row and dock slots (res/values/config.xml, columns). Set in onCreate. */
@@ -982,7 +984,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     .build(), vpnCallback);
         }
         // Not after recreate(): the launch intent survives it and would open the settings again.
-        if (savedInstanceState == null && !openLauncherSettingsIfAsked(getIntent()) && !openLibraryIfAsked(getIntent())) {
+        if (savedInstanceState == null && !openLauncherSettingsIfAsked(getIntent()) && !openLibraryIfAsked(getIntent())
+                && !dockEditIfAsked(getIntent())) {
             openInputsIfAsked(getIntent());
         }
     }
@@ -1055,7 +1058,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean openLauncherSettingsIfAsked(Intent intent) {
         if (intent == null || !ACTION_LAUNCHER_SETTINGS.equals(intent.getAction())) return false;
         setIntent(new Intent(Intent.ACTION_MAIN));
-        startActivityForResult(new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST);
+        Intent settings = new Intent(this, LauncherSettingsActivity.class);
+        if (intent.getBooleanExtra(LauncherSettingsActivity.EXTRA_OPEN_THEMES, false)) {
+            settings.putExtra(LauncherSettingsActivity.EXTRA_OPEN_THEMES, true);
+        }
+        startActivityForResult(settings, LAUNCHER_SETTINGS_REQUEST);
+        return true;
+    }
+
+    /**
+     * ACTION_DOCK_EDIT (the quick panel's Edit dock row): the intent is replaced by a plain one carrying the pending
+     * action, which startPendingSettingsReorder() consumes once the tiles are up and Home has the window focus, then
+     * removes, so a recreate() before that still starts it and one after does not start it again.
+     */
+    private boolean dockEditIfAsked(Intent intent) {
+        if (intent == null || !ACTION_DOCK_EDIT.equals(intent.getAction())) return false;
+        setIntent(new Intent(Intent.ACTION_MAIN).putExtra(LauncherSettingsActivity.EXTRA_DOCK_EDIT, true));
+        getWindow().getDecorView().post(this::startPendingSettingsReorder);
         return true;
     }
 
@@ -1070,6 +1089,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (openLauncherSettingsIfAsked(intent)) return;
         if (openLibraryIfAsked(intent)) return;
         if (openInputsIfAsked(intent)) return;
+        if (dockEditIfAsked(intent)) return;
         if (intent == null || !intent.hasCategory(Intent.CATEGORY_HOME)) return;
         if (gameDay != null && !stopped) gameDay.read();
         grid.scrollToPosition(0);
@@ -1175,9 +1195,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == LAUNCHER_SETTINGS_REQUEST && resultCode == RESULT_OK
-                && data != null && data.getBooleanExtra(LauncherSettingsActivity.EXTRA_REORDER, false)) {
-            getIntent().putExtra(LauncherSettingsActivity.EXTRA_REORDER, true);
+        if (requestCode == LAUNCHER_SETTINGS_REQUEST && resultCode == RESULT_OK && data != null
+                && (data.getBooleanExtra(LauncherSettingsActivity.EXTRA_REORDER, false)
+                || data.getBooleanExtra(LauncherSettingsActivity.EXTRA_DOCK_EDIT, false))) {
+            getIntent().putExtra(data.getBooleanExtra(LauncherSettingsActivity.EXTRA_DOCK_EDIT, false)
+                    ? LauncherSettingsActivity.EXTRA_DOCK_EDIT : LauncherSettingsActivity.EXTRA_REORDER, true);
             // The old activity must not consume the pending action, or rebuild a second time in onResume.
             settingsRevision = settingsRevision();
             recreateOnce();
@@ -1192,10 +1214,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void startPendingSettingsReorder() {
-        if (settingsRecreationPending || !tilesReady || !hasWindowFocus() || isFinishing()
-                || !getIntent().getBooleanExtra(LauncherSettingsActivity.EXTRA_REORDER, false)) return;
-        getIntent().removeExtra(LauncherSettingsActivity.EXTRA_REORDER);
-        toggleReorder();
+        Intent pending = getIntent();
+        boolean reorder = pending.getBooleanExtra(LauncherSettingsActivity.EXTRA_REORDER, false);
+        boolean dockEdit = pending.getBooleanExtra(LauncherSettingsActivity.EXTRA_DOCK_EDIT, false);
+        if (settingsRecreationPending || !tilesReady || !hasWindowFocus() || isFinishing() || !(reorder || dockEdit)) {
+            return;
+        }
+        pending.removeExtra(LauncherSettingsActivity.EXTRA_REORDER);
+        pending.removeExtra(LauncherSettingsActivity.EXTRA_DOCK_EDIT);
+        // Without a dock row the dock apps are the first tiles of the grid: reorder is how they move there.
+        if (dockEdit && dockRow) startDockEdit();
+        else if (!reordering) toggleReorder();
     }
 
     /** Rebuilds the tiles (and the module cards), then puts focus back where it was. */

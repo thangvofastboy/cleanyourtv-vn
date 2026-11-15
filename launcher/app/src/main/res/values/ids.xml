@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- CardStyle: set once a settings row has its card drawables. -->
+    <item name="card_chip" type="id" />
+    <item name="card_title" type="id" />
+</resources>

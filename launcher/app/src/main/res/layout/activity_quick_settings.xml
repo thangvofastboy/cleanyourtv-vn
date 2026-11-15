@@ -9,20 +9,27 @@
     <LinearLayout
         android:id="@+id/panel"
         android:layout_width="wrap_content"
-        android:minWidth="220dp"
+        android:minWidth="300dp"
         android:layout_height="wrap_content"
         android:layout_gravity="top|end"
         android:layout_marginTop="105dp"
         android:layout_marginEnd="56dp"
         android:orientation="vertical"
         android:background="@drawable/glass_panel"
-        android:padding="6dp"
-        android:elevation="12dp">
+        android:padding="8dp"
+        android:layout_marginBottom="24dp">
 
-        <LinearLayout
-            android:id="@+id/rows"
+        <!-- Eleven rows can be taller than the space under the pill on a 540 dp high screen. -->
+        <ScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" />
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/rows"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </ScrollView>
     </LinearLayout>
 </FrameLayout>

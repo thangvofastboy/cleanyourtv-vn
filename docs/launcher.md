@@ -48,25 +48,30 @@ Click **Settings** for the TV's own settings. Hold OK on it for its menu:
 - **Restart…** while `HomeKeyService` runs, which opens the system power menu (a launcher may not
   restart the TV itself).
 
-The launcher's own page has these rows, top to bottom:
+The launcher's own page has these rows, top to bottom. In this fork they are cards in five sections
+(Style, Dock & apps, Advanced, System, Updates), each with an icon chip coloured from the applied theme
+(`palettes` in `theme_overlay.json`, else the festive skin's colours, else neutral tones) and its current value or a
+short description under the title:
 
-- **Reorder apps**, only with `launcher_settings_button`, the same as the menu's.
-- **Apps per row** 4, 5, 6 or 7; **Rows below dock** 0 to 3, how many rows of tiles stay visible under the
-  dock band; **Dock band opacity** 100%, 70%, 50% or 30%. The last two only do anything while the dock is
-  its own row (`dock_row`, on by default).
-- **Clock**: **System** follows the TV's 12- or 24-hour setting; **12-hour** or **24-hour** sets the launcher's
-  clocks (Home and the clock screensaver) to that, whatever the TV uses (`clock_format` in a theme).
 - **Themes** (this fork): the themes bundled in the APK at build time (the list in `launcher/app/build.gradle`),
   after **Built-in (config.xml)**. OK writes the same files `tools/theme.sh` pushes, with this TV's dock, hidden apps,
   four columns and the quick settings panel laid over each (`launcher/app/src/main/assets/theme_overlay.json`),
-  then Home rebuilds. The built-in entry does what `theme.sh --reset` does.
+  then Home rebuilds. The built-in entry does what `theme.sh --reset` does. The quick settings panel's Themes row
+  opens this picker directly.
 - **Wallpaper**: one picture from the theme's collection (or its `wallpaper.jpg`), **None**, or **Theme
   default**. A pick holds that picture and stops the rotation until you choose Theme default, press
   Follow theme, or push the theme again.
-- **Animations** on or off, and **Advanced effects** (tile lift, icon zoom and smooth ambient-colour
-  transitions; they may use more memory) once animations are on.
+- **Clock**: **System** follows the TV's 12- or 24-hour setting; **12-hour** or **24-hour** sets the launcher's
+  clocks (Home and the clock screensaver) to that, whatever the TV uses (`clock_format` in a theme).
+- **Edit dock** and **Reorder apps** (always shown in this fork): Home comes back and starts the same mode as the
+  hold-OK menu's rows. The quick settings panel has an Edit dock row too.
+- **Apps per row** 4, 5, 6 or 7; **Rows below dock** 0 to 3, how many rows of tiles stay visible under the
+  dock band; **Dock band opacity** 100%, 70%, 50% or 30%. The last two only do anything while the dock is
+  its own row (`dock_row`, on by default).
 - **Open on start**, only with `open_on_start_choice`: Off, or an app that opens instead of Home the first
   time Home comes up after the TV starts. Once per boot, so Home and Back still reach the launcher.
+- **Animations** on or off, and **Advanced effects** (tile lift, icon zoom and smooth ambient-colour
+  transitions; they may use more memory) once animations are on.
 - **Follow theme (reset on-TV choices)**, which clears every choice above. Pushing or resetting a theme
   clears them too.
 - **Choose default home** opens Android's home picker, and **TV system settings** the TV's own settings

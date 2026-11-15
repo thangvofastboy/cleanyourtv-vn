@@ -182,4 +182,17 @@
     <string name="quick_sleep_timer">טיימר שינה</string>
     <string name="quick_bluetooth">שלטים ו-Bluetooth</string>
     <string name="quick_inputs">כניסות</string>
+    <!-- Card-style settings screens (this fork). -->
+    <string name="animations_label">אנימציות</string>
+    <string name="section_appearance">סגנון</string>
+    <string name="section_dock">שורת המועדפים ואפליקציות</string>
+    <string name="section_advanced">מתקדם</string>
+    <string name="section_system">מערכת</string>
+    <string name="section_update">עדכונים</string>
+    <string name="dock_edit_desc">בחירת האפליקציות בשורת המועדפים, וחזרה למסך הבית</string>
+    <string name="reorder_desc">הזזת אפליקציות במסך הבית</string>
+    <string name="tv_settings_desc">תמונה, צליל, רשת ועוד</string>
+    <string name="stock_return_desc">פקודות adb שמחזירות את המפעיל המקורי למסך הבית</string>
+    <string name="update_version">גרסה %1$s</string>
+    <string name="update_new">חדש</string>
 </resources>

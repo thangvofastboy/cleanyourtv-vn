@@ -1,5 +1,5 @@
 {
-  "_comment": "Applied by the on-TV theme picker (ThemeBundle.merge) over every bundled theme's config.json. 'all' always, 'layout' unless the theme sets single_row, then 'themes'.<name> for that theme. Labels name the themes in the picker.",
+  "_comment": "Applied by the on-TV theme picker (ThemeBundle.merge) over every bundled theme's config.json. 'all' always, 'layout' unless the theme sets single_row, then 'themes'.<name> for that theme. Labels name the themes in the picker. Palettes (2 to 4 #RRGGBB tones) colour the icon chips of Launcher settings and the quick panel while that theme is applied; merge() does not copy them.",
   "all": {
     "dock_apps": [
       "org.smarttube.stable",
@@ -37,7 +37,15 @@
       "advanced_effects": false
     }
   },
+  "palettes": {
+    "viet-nam": ["#DA251D", "#FFCD00", "#A3201A"],
+    "dong-son": ["#B87333", "#C9A227", "#3E8E7E"],
+    "aurora": ["#22C3A6", "#7C5CE0", "#3BA0E6"],
+    "red-rain": ["#C62828", "#8E1B1B", "#E0645A"],
+    "christmas": ["#C62828", "#1F7A4D", "#D4AF37"]
+  },
   "labels": {
+    "viet-nam": "Việt Nam",
     "dong-son": "Đông Sơn",
     "cinematic": "Cinematic",
     "glass": "Glass",

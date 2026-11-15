@@ -7,13 +7,9 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.content.res.ColorStateList;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.StateListDrawable;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -21,8 +17,9 @@ import android.widget.Toast;
 /**
  * The panel the remote's Settings button opens when {@code settings_key_panel} is on (HomeKeyService), and the
  * Settings pill with {@code settings_pill_panel} (this fork). Its system rows come from config.xml's
- * quick_*_targets and are left out when the TV has none of their candidates; with a festive skin the focused
- * row takes the skin's accent, and the Vietnam skin draws the icons in the flag's gold:
+ * quick_*_targets and are left out when the TV has none of their candidates. This fork draws the rows as cards
+ * (CardStyle): a chip per row in the theme's tones, the skin's or theme's accent on the focused card, and puts Themes
+ * and Edit dock first:
  * a few glass rows under the Settings pill, over Home or whatever app is playing. Translucent and in a
  * task of its own, so the app behind keeps running and Back returns to it. Pressing Settings again
  * closes the panel.
@@ -98,6 +95,13 @@ public final class QuickSettingsActivity extends Activity {
     private static final Intent NONE = new Intent();
 
     private void addRows(LinearLayout rows, boolean inputs) {
+        // This fork: the theme picker and edit-dock mode first, both through Home (Launcher settings rebuilds Home
+        // when it closes; edit-dock mode is Home's own).
+        addRow(rows, R.drawable.ic_palette, R.string.theme_label, 0, new Intent(this, MainActivity.class)
+                .setAction(MainActivity.ACTION_LAUNCHER_SETTINGS)
+                .putExtra(LauncherSettingsActivity.EXTRA_OPEN_THEMES, true));
+        addRow(rows, R.drawable.ic_dock, R.string.dock_edit, 0, new Intent(this, MainActivity.class)
+                .setAction(MainActivity.ACTION_DOCK_EDIT));
         // System rows open the first candidate from config.xml the TV can open, and are left out when none can.
         addSystemRow(rows, R.drawable.ic_sound, R.string.quick_sound, R.array.quick_sound_targets, false);
         addSystemRow(rows, R.drawable.ic_timer, R.string.quick_sleep_timer, R.array.quick_sleep_timer_targets, false);
@@ -117,30 +121,21 @@ public final class QuickSettingsActivity extends Activity {
         rows.getChildAt(0).requestFocus();
     }
 
-    /** Row colours: the theme's festive accent behind the focused row, the Vietnam skin's gold on icons. */
-    private int focusFill = 0;
-    private ColorStateList ink, iconInk;
+    /** The card look (CardStyle): chips in the theme's tones, the skin's or theme's accent on the focused card. */
+    private CardStyle cards;
+    /** Chip colour order: each added row takes the next tone. */
+    private int rowIndex;
 
     private void style(Config cfg) {
-        Festival festival = cfg == null ? Festival.NONE : cfg.festival;
-        boolean festive = festival.active(java.time.LocalDate.now());
+        cards = CardStyle.of(this, cfg);
         View panel = findViewById(R.id.panel);
         float d = getResources().getDisplayMetrics().density;
-        if (cfg != null && cfg.dockGlass) {
-            // A theme with the frosted dock gets the same light glass here: translucent, a thin bright rim.
-            GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                    new int[]{0xD92A2A2E, 0xD9161618});
-            glass.setCornerRadius(20 * d);
-            glass.setStroke(Math.max(1, Math.round(d)), 0x40FFFFFF);
-            panel.setBackground(glass);
-        }
-        if (!festive) return;
-        focusFill = festival.accentColor();
-        boolean vietnam = festival.isVietnam();
-        int[][] states = {{android.R.attr.state_focused}, {}};
-        ink = new ColorStateList(states, new int[]{0xFFFFFFFF, vietnam ? 0xFFFFF4CC : 0xFFFFFFFF});
-        iconInk = new ColorStateList(states, new int[]{vietnam ? Festival.STAR_GOLD : 0xFFFFFFFF,
-                vietnam ? Festival.STAR_GOLD : 0xFFFFFFFF});
+        // Translucent dark glass with a thin rim, for every theme (no blur, no shadow).
+        GradientDrawable glass = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xE01A1D24, 0xE60F1116});
+        glass.setCornerRadius(20 * d);
+        glass.setStroke(Math.max(1, Math.round(d)), 0x33FFFFFF);
+        panel.setBackground(glass);
     }
 
     /** A system row from config.xml's candidates; nothing is added when none resolves on this TV. */
@@ -222,25 +217,10 @@ public final class QuickSettingsActivity extends Activity {
     }
 
     private void addRow(LinearLayout rows, int icon, int title, int status, Intent target) {
-        View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
-        ImageView iconView = row.findViewById(R.id.icon);
-        iconView.setImageResource(icon);
-        TextView titleView = row.findViewById(R.id.title);
-        titleView.setText(title);
-        if (focusFill != 0) {
-            float r = 13 * getResources().getDisplayMetrics().density;
-            GradientDrawable focused = new GradientDrawable();
-            focused.setColor(focusFill);
-            focused.setCornerRadius(r);
-            StateListDrawable bg = new StateListDrawable();
-            bg.addState(new int[]{android.R.attr.state_focused}, focused);
-            bg.addState(new int[]{}, new ColorDrawable(0));
-            row.setBackground(bg);
-            titleView.setTextColor(ink);
-            iconView.setImageTintList(iconInk);
-            ((TextView) row.findViewById(R.id.status)).setTextColor(ink.withAlpha(0xB3));
-        }
-        row.findViewById(R.id.dot).setVisibility(View.GONE);
+        View row = getLayoutInflater().inflate(R.layout.item_quick_row, rows, false);
+        cards.chipOn(row.findViewById(R.id.icon), icon, rowIndex++);
+        ((TextView) row.findViewById(R.id.title)).setText(title);
+        row.setBackground(cards.card());   // no focus lift here: the rows fill the panel, a scaled one would clip
         TextView hint = row.findViewById(R.id.status);
         if (status != 0) hint.setText(status);
         else hint.setVisibility(View.GONE);

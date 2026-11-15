@@ -27,6 +27,11 @@ public final class LauncherSettingsActivity extends Activity {
     }
 
     static final String EXTRA_REORDER = "com.gathin.tvhome.extra.REORDER_FROM_SETTINGS";
+    /** Result (and Home's pending action): rebuild, then start edit-dock mode, as the hold-OK menu's Edit dock. */
+    static final String EXTRA_DOCK_EDIT = "com.gathin.tvhome.extra.DOCK_EDIT_FROM_SETTINGS";
+    /** Open the theme picker as soon as this screen is up (the quick panel's Themes row, through Home). */
+    static final String EXTRA_OPEN_THEMES = "com.gathin.tvhome.extra.OPEN_THEMES";
+    private CardStyle style;
     private SharedPreferences choices;
     private final TextView[] columnChoices = new TextView[4];
     private final TextView[] rowChoices = new TextView[4];
@@ -57,17 +62,28 @@ public final class LauncherSettingsActivity extends Activity {
         super.onCreate(state);
         setContentView(R.layout.activity_launcher_settings);
         updateChoice = findViewById(R.id.updateChoice);
-        updateChoice.setText(getString(R.string.update_check));
         updateChoice.setOnClickListener(v -> onUpdatePressed());
         findViewById(R.id.stockLauncherChoice).setOnClickListener(v -> showStockLauncherHelp());
         choices = getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE);
         Config config = Config.load(this);
-        View reorderChoice = findViewById(R.id.reorderChoice);
-        reorderChoice.setVisibility(config.launcherSettingsButton ? View.VISIBLE : View.GONE);
+        style = CardStyle.of(this, config);
+        // Both always here (this fork): Home rebuilds, then starts the mode, as from the Settings pill's hold-OK menu.
+        TextView reorderChoice = findViewById(R.id.reorderChoice);
         reorderChoice.setOnClickListener(v -> {
             setResult(RESULT_OK, new Intent().putExtra(EXTRA_REORDER, true));
             finish();
         });
+        TextView dockEditChoice = findViewById(R.id.dockEditChoice);
+        dockEditChoice.setOnClickListener(v -> {
+            setResult(RESULT_OK, new Intent().putExtra(EXTRA_DOCK_EDIT, true));
+            finish();
+        });
+        card(dockEditChoice, R.drawable.ic_dock, ROW_DOCK_EDIT, getString(R.string.dock_edit_desc), false);
+        card(reorderChoice, R.drawable.ic_swap_vert, ROW_REORDER, getString(R.string.reorder_desc), false);
+        style.caption(this, findViewById(R.id.clockCaption), R.drawable.ic_clock, ROW_CLOCK);
+        style.caption(this, findViewById(R.id.columnsCaption), R.drawable.ic_grid, ROW_COLUMNS);
+        style.caption(this, findViewById(R.id.rowsCaption), R.drawable.ic_rows, ROW_ROWS);
+        style.caption(this, findViewById(R.id.dockOpacityCaption), R.drawable.ic_opacity, ROW_OPACITY);
         columns = config.columns;
         rowsBelowDock = config.rowsBelowDock;
         dockOpacity = config.dockOpacity;
@@ -180,13 +196,53 @@ public final class LauncherSettingsActivity extends Activity {
             changed();
             refresh();
         });
-        findViewById(R.id.defaultHomeChoice).setOnClickListener(v ->
-                open(new Intent(this, HomeSettingsActivity.class)));
-        findViewById(R.id.tvSettingsChoice).setOnClickListener(v ->
-                open(SystemSettings.intent(this, Settings.ACTION_SETTINGS)));
+        TextView defaultHome = findViewById(R.id.defaultHomeChoice);
+        defaultHome.setOnClickListener(v -> open(new Intent(this, HomeSettingsActivity.class)));
+        TextView tvSettings = findViewById(R.id.tvSettingsChoice);
+        tvSettings.setOnClickListener(v -> open(SystemSettings.intent(this, Settings.ACTION_SETTINGS)));
+        card(followThemeChoice, R.drawable.ic_refresh, ROW_FOLLOW, getString(R.string.follow_theme_hint), false);
+        card(defaultHome, R.drawable.ic_home, ROW_HOME, getString(R.string.home_settings_help), false);
+        card(tvSettings, R.drawable.ic_settings, ROW_TV, getString(R.string.tv_settings_desc), false);
+        card(findViewById(R.id.stockLauncherChoice), R.drawable.ic_exit, ROW_STOCK,
+                getString(R.string.stock_return_desc), false);
+        showUpdate(getString(R.string.update_version, BuildConfig.VERSION_NAME), false);
+        for (TextView[] group : new TextView[][]{columnChoices, rowChoices, dockChoices, clockChoices}) {
+            for (TextView pill : group) pill.setBackground(style.pill());
+        }
         refresh();
-        if (config.launcherSettingsButton) reorderChoice.requestFocus();
-        else columnChoices[Math.max(0, Math.min(columns - 4, 3))].requestFocus();
+        themeChoice.requestFocus();
+        // The quick panel's Themes row: straight to the picker, once (not again after a recreate).
+        if (state == null && getIntent().getBooleanExtra(EXTRA_OPEN_THEMES, false)) {
+            getIntent().removeExtra(EXTRA_OPEN_THEMES);
+            themeChoice.post(() -> {
+                if (!isFinishing() && !isDestroyed()) showThemePicker();
+            });
+        }
+    }
+
+    /** Chip colour order of the rows, top to bottom, so neighbours take different tones. */
+    private static final int ROW_THEME = 0, ROW_WALLPAPER = 1, ROW_CLOCK = 2, ROW_DOCK_EDIT = 3, ROW_REORDER = 4,
+            ROW_COLUMNS = 5, ROW_ROWS = 6, ROW_OPACITY = 7, ROW_OPEN_ON_START = 8, ROW_ANIMATIONS = 9,
+            ROW_ADVANCED = 10, ROW_FOLLOW = 11, ROW_HOME = 12, ROW_TV = 13, ROW_STOCK = 14, ROW_UPDATE = 15;
+
+    /** A row as a card: the layout's text stays the title, {@code sub} goes on the line under it. */
+    private void card(TextView row, int icon, int index, CharSequence sub, boolean isValue) {
+        card(row, icon, index, sub, isValue, null);
+    }
+
+    private void card(TextView row, int icon, int index, CharSequence sub, boolean isValue, CharSequence badge) {
+        CharSequence title = (CharSequence) row.getTag(R.id.card_title);
+        if (title == null) {
+            title = row.getText().toString();
+            row.setTag(R.id.card_title, title);
+        }
+        style.row(this, row, icon, index, title, sub, isValue, badge);
+    }
+
+    /** The update row's second line; {@code available} adds the "New" badge in the theme's second colour. */
+    private void showUpdate(CharSequence text, boolean available) {
+        card(updateChoice, R.drawable.ic_download, ROW_UPDATE, text, true,
+                available ? getString(R.string.update_new) : null);
     }
 
     private void reverseRow(TextView[] views) {
@@ -268,7 +324,7 @@ public final class LauncherSettingsActivity extends Activity {
             return;
         }
         themeChoice.setEnabled(false);
-        themeChoice.setText(R.string.theme_applying);
+        card(themeChoice, R.drawable.ic_palette, ROW_THEME, getString(R.string.theme_applying), true);
         android.content.Context app = getApplicationContext();
         new Thread(() -> {
             ThemeInstaller.Result result;
@@ -329,7 +385,7 @@ public final class LauncherSettingsActivity extends Activity {
     /** This screen's listener, kept so onStop clears the static only when a newer screen has not replaced it. */
     private final UpdateStatusReceiver.Listener updateListener = text -> {
         update = null;
-        if (updateChoice != null) updateChoice.setText(text);
+        if (updateChoice != null) showUpdate(text, false);
     };
 
     @Override
@@ -346,14 +402,18 @@ public final class LauncherSettingsActivity extends Activity {
 
     /** Shows {@code text} on the update row if this screen is still up; any thread. */
     private void updateRow(String text) {
+        updateRow(text, false);
+    }
+
+    private void updateRow(String text, boolean available) {
         runOnUiThread(() -> {
-            if (!isFinishing() && !isDestroyed()) updateChoice.setText(text);
+            if (!isFinishing() && !isDestroyed()) showUpdate(text, available);
         });
     }
 
     private void onUpdatePressed() {
         if (UpdateClient.confirmPending()) {
-            updateChoice.setText(R.string.update_waiting_confirm);
+            showUpdate(getString(R.string.update_waiting_confirm), false);
             return;
         }
         if (update != null && !getPackageManager().canRequestPackageInstalls()) {
@@ -362,7 +422,7 @@ public final class LauncherSettingsActivity extends Activity {
                 startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                         android.net.Uri.parse("package:" + getPackageName())));
             } catch (ActivityNotFoundException | SecurityException e) {
-                updateChoice.setText(R.string.update_unknown_sources_adb);
+                showUpdate(getString(R.string.update_unknown_sources_adb), true);
             }
             return;
         }
@@ -371,13 +431,13 @@ public final class LauncherSettingsActivity extends Activity {
         android.content.Context app = getApplicationContext();
         Updates.Candidate target = update;
         if (target == null) {
-            updateChoice.setText(R.string.update_checking);
+            showUpdate(getString(R.string.update_checking), false);
             new Thread(() -> {
                 try {
                     Updates.Candidate found = UpdateClient.check();
                     runOnUiThread(() -> update = found);
                     updateRow(found == null ? app.getString(R.string.update_latest, BuildConfig.VERSION_NAME)
-                            : app.getString(R.string.update_available, found.version));
+                            : app.getString(R.string.update_available, found.version), found != null);
                 } catch (UpdateClient.Failure f) {
                     updateRow(app.getString(R.string.update_failed, app.getString(f.message)));
                 } finally {
@@ -386,7 +446,7 @@ public final class LauncherSettingsActivity extends Activity {
             }, "update-check").start();
             return;
         }
-        updateChoice.setText(getString(R.string.update_downloading, 0));
+        showUpdate(getString(R.string.update_downloading, 0), false);
         new Thread(() -> {
             UpdateClient.Download apk = null;
             try {
@@ -492,19 +552,19 @@ public final class LauncherSettingsActivity extends Activity {
         for (int i = 0; i < clockChoices.length; i++) {
             clockChoices[i].setSelected(CLOCK_FORMATS[i].equals(clockFormat));
         }
-        animationsChoice.setText(getString(R.string.animations_state,
-                getString(animations ? R.string.on : R.string.off)));
-        advancedChoice.setText(getString(R.string.advanced_effects_state,
-                getString(advancedEffects ? R.string.on : R.string.off)));
+        card(animationsChoice, R.drawable.ic_sparkle, ROW_ANIMATIONS, getString(animations ? R.string.on : R.string.off),
+                true);
+        card(advancedChoice, R.drawable.ic_bolt, ROW_ADVANCED, getString(advancedEffects ? R.string.on : R.string.off),
+                true);
         advancedChoice.setEnabled(animations);
         advancedChoice.setAlpha(animations ? 1f : 0.5f);
         String wallpaperCurrent = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
-        wallpaperChoice.setText(getString(R.string.wallpaper_state,
+        card(wallpaperChoice, R.drawable.ic_picture, ROW_WALLPAPER,
                 "none".equals(wallpaperCurrent) ? getString(R.string.wallpaper_none)
                         : wallpaperCurrent != null ? wallpaperCurrent
-                        : getString(R.string.wallpaper_theme_default)));
-        openOnStartChoice.setText(getString(R.string.open_on_start_state, openOnStartLabel()));
-        themeChoice.setText(getString(R.string.theme_state, themeLabel()));
+                        : getString(R.string.wallpaper_theme_default), true);
+        card(openOnStartChoice, R.drawable.ic_play, ROW_OPEN_ON_START, openOnStartLabel(), true);
+        card(themeChoice, R.drawable.ic_palette, ROW_THEME, themeLabel(), true);
         followThemeChoice.setSelected(!hasOnTvChoices());
     }
 

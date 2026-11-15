@@ -20,7 +20,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFont
 HERE = Path(__file__).resolve().parent
 W, H = 1920, 1080
 S = 2                      # supersampling: draw at 2x, then scale down for smooth edges
-CX, CY, R = 1330, 540, 500  # the drum face, in 1x pixels
+CX, CY, R = 1330, 700, 470  # the drum face, in 1x pixels: low enough to clear the top buttons
 
 PALETTES = {
     "01-dong-son-copper.jpg": dict(bg=(16, 11, 8), face=(38, 24, 14), band=(30, 19, 11),
