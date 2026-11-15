@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Quick settings panel row icon, drawn for this fork. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="22dp" android:height="22dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M3,9v6h4l5,5V4L7,9H3zM14,7.2v1.9c1.2,0.6 2,1.6 2,2.9s-0.8,2.3 -2,2.9v1.9c2.2,-0.7 4,-2.5 4,-4.8S16.2,7.9 14,7.2zM14,3.2v1.9c3,0.8 5,3.7 5,6.9s-2,6.1 -5,6.9v1.9c4.1,-0.9 7,-4.6 7,-8.8S18.1,4.1 14,3.2z" />
+</vector>

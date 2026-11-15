@@ -1,0 +1,52 @@
+{
+  "_comment": "Applied by the on-TV theme picker (ThemeBundle.merge) over every bundled theme's config.json. 'all' always, 'layout' unless the theme sets single_row, then 'themes'.<name> for that theme. Labels name the themes in the picker.",
+  "all": {
+    "dock_apps": [
+      "org.smarttube.stable",
+      "net.fptplay.ottbox",
+      "com.vieon.tv",
+      "com.viettel.tv360.tv"
+    ],
+    "hidden_apps": [
+      "com.mediatek.wwtv.tvcenter",
+      "com.mitv.gallery",
+      "com.dinhlap.keyboard.vn",
+      "com.liskovsoft.leankeyboard",
+      "com.esaba.downloader",
+      "com.tech.downloader",
+      "cm.aptoidetv.pt",
+      "com.dinhlap.dlstore",
+      "com.cxinventor.file.explorer",
+      "com.yablio.sendfilestotv",
+      "org.localsend.localsend_app"
+    ],
+    "settings_key_panel": true,
+    "settings_pill_panel": true,
+    "ambient_glow": false,
+    "app_glow": false,
+    "advanced_effects": false,
+    "wallpaper_true_color": false,
+    "focus_overshoot": false
+  },
+  "layout": {
+    "columns": 4
+  },
+  "themes": {
+    "cinematic": {
+      "wallpaper_true_color": false,
+      "advanced_effects": false
+    }
+  },
+  "labels": {
+    "dong-son": "Đông Sơn",
+    "cinematic": "Cinematic",
+    "glass": "Glass",
+    "glass-gallery": "Glass gallery",
+    "minimal": "Minimal",
+    "dock-glass": "Dock glass",
+    "aurora": "Aurora",
+    "red-rain": "Red rain",
+    "ridgelines": "Ridgelines",
+    "christmas": "Christmas"
+  }
+}

@@ -21,6 +21,9 @@ public final class PetalShowerView extends View {
 
     private static final int[] COLORS = {0xFFFF8C1A, 0xFFFFB627, 0xFFF26A0D, 0xFFFFC93C, 0xFFE85D04};
     private static final int EDGE = 0xFF7A2800;
+    /** The Vietnam skin's shower: small gold stars instead of petals. */
+    private static final int[] GOLDS = {0xFFFFCD00, 0xFFFFD84A, 0xFFF5B800, 0xFFFFE27A, 0xFFE8A800};
+    private static final int STAR_EDGE = 0xFF8A5A00;
     private static final double TAU = 2 * Math.PI;
 
     private final float density;
@@ -30,6 +33,8 @@ public final class PetalShowerView extends View {
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint vein = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final int[] palette;
+    private final boolean stars;
 
     // per-petal state, grown only when a bigger shower is asked for
     private int count;
@@ -52,7 +57,18 @@ public final class PetalShowerView extends View {
     }
 
     public PetalShowerView(Context context, AttributeSet attrs, int defStyleAttr) {
+        this(context, attrs, defStyleAttr, false);
+    }
+
+    /** {@code stars}: gold five-pointed stars (the Vietnam skin) with the same fall, sway and fade as the petals. */
+    public PetalShowerView(Context context, boolean stars) {
+        this(context, null, 0, stars);
+    }
+
+    private PetalShowerView(Context context, AttributeSet attrs, int defStyleAttr, boolean stars) {
         super(context, attrs, defStyleAttr);
+        this.stars = stars;
+        palette = stars ? GOLDS : COLORS;
         density = context.getResources().getDisplayMetrics().density;
         setFocusable(false);
         setClickable(false);
@@ -61,8 +77,8 @@ public final class PetalShowerView extends View {
 
         Random seeded = new Random(0x9E7A1L);
         for (int i = 0; i < shapes.length; i++) {
-            shapes[i] = petalShape(seeded);
-            veins[i] = veinPath(seeded);
+            shapes[i] = stars ? starShape(0.38f + 0.04f * i) : petalShape(seeded);
+            veins[i] = stars ? new Path() : veinPath(seeded);
         }
         edge.setStyle(Paint.Style.STROKE);
         edge.setStrokeWidth(0.045f);
@@ -70,7 +86,7 @@ public final class PetalShowerView extends View {
         vein.setStyle(Paint.Style.STROKE);
         vein.setStrokeWidth(0.035f);
         vein.setStrokeCap(Paint.Cap.ROUND);
-        vein.setColor(EDGE);
+        vein.setColor(stars ? STAR_EDGE : EDGE);
     }
 
     /**
@@ -100,7 +116,7 @@ public final class PetalShowerView extends View {
             spin[i] = (40f + rnd.nextFloat() * 120f) * (rnd.nextBoolean() ? 1f : -1f); // degrees per second
             flipFreq[i] = 0.4f + rnd.nextFloat();           // Hz
             flipPhase[i] = rnd.nextFloat() * (float) TAU;
-            color[i] = rnd.nextInt(COLORS.length);
+            color[i] = rnd.nextInt(palette.length);
             shape[i] = rnd.nextInt(shapes.length);
         }
         playing = true;
@@ -149,7 +165,7 @@ public final class PetalShowerView extends View {
 
             // turned edge-on it looks darker; the back is darker still
             float shade = (flip < 0f ? 0.78f : 1f) * (0.8f + 0.2f * Math.abs(flip));
-            int base = COLORS[color[i]];
+            int base = palette[color[i]];
             fill.setColor(scale(base, shade));
             fill.setAlpha(a);
             edge.setColor(scale(base, 0.55f));
@@ -162,7 +178,7 @@ public final class PetalShowerView extends View {
             c.scale(len * sx, len);
             c.drawPath(shapes[shape[i]], fill);
             c.drawPath(shapes[shape[i]], edge);
-            c.drawPath(veins[shape[i]], vein);
+            if (!stars) c.drawPath(veins[shape[i]], vein);
             c.restore();
         }
         postInvalidateOnAnimation();
@@ -203,6 +219,16 @@ public final class PetalShowerView extends View {
         p.cubicTo(wTop + 0.04f, 0.02f, 0.16f, 0.36f, 0f, 0.5f);
         p.close();
         return p;
+    }
+
+    /** A five-pointed star, 1 unit tall around the origin. */
+    private static Path starShape(float innerRatio) {
+        float[] p = Star.points(0f, 0.05f, 0.5f, 0.5f * innerRatio, 0f);
+        Path path = new Path();
+        path.moveTo(p[0], p[1]);
+        for (int i = 2; i < p.length; i += 2) path.lineTo(p[i], p[i + 1]);
+        path.close();
+        return path;
     }
 
     private static Path veinPath(Random r) {

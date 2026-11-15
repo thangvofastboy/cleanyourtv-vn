@@ -237,7 +237,7 @@ def draw(name, m):
 
     out = Image.fromarray(np.clip(img, 0, 255).astype(np.uint8))
     path = OUT / f"{name}.jpg"
-    out.save(path, "JPEG", quality=85, optimize=True, progressive=True)
+    out.save(path, "JPEG", quality=85, optimize=True, progressive=False)   # baseline: faster to decode on a TV
     return path
 
 

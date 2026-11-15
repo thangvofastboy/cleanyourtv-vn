@@ -164,7 +164,9 @@ final class ClockScene {
             Bitmap bmp = decode(file, w, h);
             if (bmp == null) return;
             handler.post(() -> {
-                if (generation != wallpaperGeneration || wallpaperShown) {
+                // A hardware bitmap needs a hardware-accelerated window (every activity and dream here is one).
+                boolean drawable = bmp.getConfig() != Bitmap.Config.HARDWARE || ambient.isHardwareAccelerated();
+                if (generation != wallpaperGeneration || wallpaperShown || !drawable) {
                     bmp.recycle();   // stopped meanwhile (or already shown): this picture was never attached
                     return;
                 }
@@ -197,7 +199,13 @@ final class ClockScene {
                 options.inTargetDensity = scale[1];
             }
             options.inPreferredConfig = Bitmap.Config.RGB_565;
-            return BitmapFactory.decodeFile(file.getPath(), options);
+            Bitmap decoded = BitmapFactory.decodeFile(file.getPath(), options);
+            if (decoded == null) return null;
+            // As WallpaperPlayer: one copy in GPU memory instead of a software bitmap plus its texture.
+            Bitmap gpu = decoded.copy(Bitmap.Config.HARDWARE, false);
+            if (gpu == null) return decoded;
+            decoded.recycle();
+            return gpu;
         } catch (Exception | OutOfMemoryError failure) {
             return null;
         }

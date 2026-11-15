@@ -68,4 +68,34 @@ public class FestivalTest {
         assertFalse(Festival.parse("onam", "", "", "").isHalloween());
         assertFalse(Festival.NONE.isHalloween());
     }
+
+    @Test
+    public void vietnamHasItsOwnSkinAndFlagRedAccent() {
+        Festival f = Festival.parse("Vietnam", "", "", "");
+        assertTrue(f.isVietnam());
+        assertFalse(f.isHalloween());
+        assertTrue(f.active(DAY));
+        assertEquals(Festival.FLAG_RED, f.accentColor());
+        assertEquals(0xFFDA251D, Festival.FLAG_RED);
+        assertEquals(0xFF102030, Festival.parse("vietnam", "", "", "#102030").accentColor());
+    }
+
+    @Test
+    public void vietnamComesFromSeasonalSkinsToo() {
+        assertTrue(Festival.parse(" VIETNAM ", "2026-12-31", "", "").isVietnam());
+        assertFalse(Festival.parse("vietnam", "2026-10-19", "", "").active(DAY));
+    }
+
+    @Test
+    public void vietnamCustomGreetingWins() {
+        assertEquals("Chúc mừng năm mới", Festival.parse("vietnam", "", "Chúc mừng năm mới", "").greetingText(null));
+    }
+
+    @Test
+    public void otherSkinsAreNotVietnam() {
+        assertFalse(Festival.parse("diwali", "", "", "").isVietnam());
+        assertFalse(Festival.parse("halloween", "", "", "").isVietnam());
+        assertFalse(Festival.NONE.isVietnam());
+        assertEquals(Festival.DEFAULT_ACCENT, Festival.parse("diwali", "", "", "").accentColor());
+    }
 }

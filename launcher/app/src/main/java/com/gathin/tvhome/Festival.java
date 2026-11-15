@@ -26,6 +26,15 @@ final class Festival {
     /** Pumpkin orange, Halloween's accent when the theme names no colour. */
     static final int PUMPKIN = 0xFFFF7A1A;
 
+    /** The Vietnam skin: a gold star for the network, a flag for Inputs, a star badge for Settings, falling stars. */
+    static final String VIETNAM = "vietnam";
+
+    /** Flag red (#DA251D), the Vietnam skin's accent when the theme names no colour. */
+    static final int FLAG_RED = 0xFFDA251D;
+
+    /** Star gold (#FFCD00) of the flag. */
+    static final int STAR_GOLD = 0xFFFFCD00;
+
     /** Lower-case festival name, or "" for none. */
     final String name;
     /** Last day the skin shows, inclusive; null for no end date. */
@@ -76,6 +85,8 @@ final class Festival {
                 return res.getString(R.string.festival_diwali_greeting);
             case HALLOWEEN:
                 return res.getString(R.string.festival_halloween_greeting);
+            case VIETNAM:
+                return res.getString(R.string.festival_vietnam_greeting);
             default:
                 return "";
         }
@@ -83,7 +94,13 @@ final class Festival {
 
     int accentColor() {
         if (accent != 0) return accent;
+        if (isVietnam()) return FLAG_RED;
         return isHalloween() ? PUMPKIN : DEFAULT_ACCENT;
+    }
+
+    /** Whether this is the Vietnam skin (star, flag, star badge, star shower). */
+    boolean isVietnam() {
+        return VIETNAM.equals(name);
     }
 
     /** Whether this is the Halloween skin rather than the diya, bell and marigold. */

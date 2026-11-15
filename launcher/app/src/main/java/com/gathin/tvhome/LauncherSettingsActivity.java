@@ -35,6 +35,12 @@ public final class LauncherSettingsActivity extends Activity {
     private static final String[] CLOCK_FORMATS = {"system", "12", "24"};
     private final TextView[] clockChoices = new TextView[CLOCK_FORMATS.length];
     private TextView wallpaperChoice;
+    private TextView themeChoice;
+    private TextView updateChoice;
+    /** The update found by the last check, offered on the next press; null before a check or when up to date. */
+    private Updates.Candidate update;
+    /** The bundled theme last applied from this screen ("" for the built-in config), kept for the row's label. */
+    static final String BUNDLED_THEME_KEY = "bundled_theme";
     private TextView animationsChoice;
     private TextView advancedChoice;
     private TextView followThemeChoice;
@@ -50,6 +56,10 @@ public final class LauncherSettingsActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         setContentView(R.layout.activity_launcher_settings);
+        updateChoice = findViewById(R.id.updateChoice);
+        updateChoice.setText(getString(R.string.update_check));
+        updateChoice.setOnClickListener(v -> onUpdatePressed());
+        findViewById(R.id.stockLauncherChoice).setOnClickListener(v -> showStockLauncherHelp());
         choices = getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE);
         Config config = Config.load(this);
         View reorderChoice = findViewById(R.id.reorderChoice);
@@ -123,6 +133,8 @@ public final class LauncherSettingsActivity extends Activity {
             reverseRow(dockChoices);
             reverseRow(clockChoices);
         }
+        themeChoice = findViewById(R.id.themeChoice);
+        themeChoice.setOnClickListener(v -> showThemePicker());
         wallpaperChoice = findViewById(R.id.wallpaperChoice);
         wallpaperChoice.setOnClickListener(v -> showWallpaperPicker());
         animationsChoice = findViewById(R.id.animationsChoice);
@@ -217,6 +229,181 @@ public final class LauncherSettingsActivity extends Activity {
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
+    }
+
+    /**
+     * The themes bundled in the APK, after the built-in config.xml. OK writes the same files tools/theme.sh pushes
+     * (off the main thread), then Home rebuilds with them when this screen closes: the theme revision and the
+     * settings change count both move, so Home's onResume recreates it and Config drops the on-TV choices.
+     */
+    private void showThemePicker() {
+        java.util.Map<String, List<String>> themes = ThemeInstaller.themes(this);
+        org.json.JSONObject overlay = ThemeInstaller.overlay(this);
+        List<String> names = new ArrayList<>(themes.keySet());
+        String[] labels = new String[names.size() + 1];
+        labels[0] = getString(R.string.theme_builtin);
+        for (int i = 0; i < names.size(); i++) labels[i + 1] = ThemeBundle.label(names.get(i), overlay);
+        String current = choices.getString(BUNDLED_THEME_KEY, null);
+        int checked = current == null ? -1 : current.isEmpty() ? 0
+                : names.contains(current) ? names.indexOf(current) + 1 : -1;
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.theme_label)
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    dialog.dismiss();
+                    applyTheme(which == 0 ? null : names.get(which - 1));
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    /**
+     * Writes the theme on a worker. The worker itself records the result in the settings with commit(), so Home
+     * rebuilds even when this screen was closed meanwhile: on success and on a failure after the folder changed
+     * (the new config.json is the first file swapped in, so the theme's name is what Home now reads), the theme's
+     * name is saved and the change count moves. A failure while staging changed nothing and saves nothing.
+     */
+    private void applyTheme(String name) {
+        if (!ThemeInstaller.BUSY.compareAndSet(false, true)) {
+            Toast.makeText(this, R.string.theme_applying, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        themeChoice.setEnabled(false);
+        themeChoice.setText(R.string.theme_applying);
+        android.content.Context app = getApplicationContext();
+        new Thread(() -> {
+            ThemeInstaller.Result result;
+            try {
+                try {
+                    result = ThemeInstaller.apply(app, name);
+                } catch (RuntimeException e) {
+                    // Unknown how far it got: let Home re-read whatever the folder now holds.
+                    result = new ThemeInstaller.Result(name == null ? Config.FILE_NAME : name, true);
+                }
+                if (result.changed) {
+                    SharedPreferences prefs = app.getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE);
+                    prefs.edit().putString(BUNDLED_THEME_KEY, name == null ? "" : name)
+                            .putLong(Config.SETTINGS_REVISION_KEY, prefs.getLong(Config.SETTINGS_REVISION_KEY, 0) + 1)
+                            .commit();
+                }
+            } finally {
+                ThemeInstaller.BUSY.set(false);
+            }
+            ThemeInstaller.Result done = result;
+            runOnUiThread(() -> {
+                if (done.failed != null) {
+                    Toast.makeText(app, getString(R.string.theme_failed, done.failed), Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(app, R.string.theme_applied, Toast.LENGTH_SHORT).show();
+                }
+                if (isFinishing() || isDestroyed()) return;
+                themeChoice.setEnabled(true);
+                if (done.failed != null) {
+                    refresh();
+                    return;
+                }
+                setResult(RESULT_OK);
+                finish();
+            });
+        }, "theme-apply").start();
+    }
+
+    /**
+     * Going back to the TV's own launcher takes adb: Home stays on this launcher and nothing here changes that.
+     * The dialog names the commands for this TV's stock launcher (StockLauncher) and where the steps are written.
+     */
+    private void showStockLauncherHelp() {
+        String stock = StockLauncher.find(this, Config.load(this).stockHomeRedirect);
+        StringBuilder text = new StringBuilder(getString(R.string.stock_return_intro)).append("\n\n");
+        for (String command : StockLauncher.commands(stock, getPackageName())) text.append(command).append('\n');
+        text.append('\n').append(getString(R.string.stock_return_notes, getPackageName()))
+                .append("\n\n").append(StockLauncher.HELP_URL);
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.stock_return_label)
+                .setMessage(text.toString())
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+    }
+
+    // ---- in-app update (this fork): network only after this press ----------------------------------------
+
+    /** This screen's listener, kept so onStop clears the static only when a newer screen has not replaced it. */
+    private final UpdateStatusReceiver.Listener updateListener = text -> {
+        update = null;
+        if (updateChoice != null) updateChoice.setText(text);
+    };
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        UpdateStatusReceiver.listener = updateListener;
+    }
+
+    @Override
+    protected void onStop() {
+        if (UpdateStatusReceiver.listener == updateListener) UpdateStatusReceiver.listener = null;
+        super.onStop();
+    }
+
+    /** Shows {@code text} on the update row if this screen is still up; any thread. */
+    private void updateRow(String text) {
+        runOnUiThread(() -> {
+            if (!isFinishing() && !isDestroyed()) updateChoice.setText(text);
+        });
+    }
+
+    private void onUpdatePressed() {
+        if (UpdateClient.confirmPending()) {
+            updateChoice.setText(R.string.update_waiting_confirm);
+            return;
+        }
+        if (update != null && !getPackageManager().canRequestPackageInstalls()) {
+            Toast.makeText(this, R.string.update_unknown_sources, Toast.LENGTH_LONG).show();
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        android.net.Uri.parse("package:" + getPackageName())));
+            } catch (ActivityNotFoundException | SecurityException e) {
+                updateChoice.setText(R.string.update_unknown_sources_adb);
+            }
+            return;
+        }
+        // One check, download or install per process: a second press, or a recreated screen, waits for it.
+        if (!UpdateClient.BUSY.compareAndSet(false, true)) return;
+        android.content.Context app = getApplicationContext();
+        Updates.Candidate target = update;
+        if (target == null) {
+            updateChoice.setText(R.string.update_checking);
+            new Thread(() -> {
+                try {
+                    Updates.Candidate found = UpdateClient.check();
+                    runOnUiThread(() -> update = found);
+                    updateRow(found == null ? app.getString(R.string.update_latest, BuildConfig.VERSION_NAME)
+                            : app.getString(R.string.update_available, found.version));
+                } catch (UpdateClient.Failure f) {
+                    updateRow(app.getString(R.string.update_failed, app.getString(f.message)));
+                } finally {
+                    UpdateClient.BUSY.set(false);
+                }
+            }, "update-check").start();
+            return;
+        }
+        updateChoice.setText(getString(R.string.update_downloading, 0));
+        new Thread(() -> {
+            UpdateClient.Download apk = null;
+            try {
+                apk = UpdateClient.download(app, target,
+                        pct -> updateRow(app.getString(R.string.update_downloading, pct)));
+                updateRow(app.getString(R.string.update_installing));
+                UpdateClient.install(app, apk);
+                // Committed: this candidate is spent; the final status (or a new check) decides what comes next.
+                runOnUiThread(() -> update = null);
+            } catch (UpdateClient.Failure f) {
+                runOnUiThread(() -> update = null);
+                updateRow(app.getString(R.string.update_failed, app.getString(f.message)));
+            } finally {
+                if (apk != null) apk.file.delete();   // this worker's own file; the session holds its own copy
+                UpdateClient.BUSY.set(false);
+            }
+        }, "update-download").start();
     }
 
     /** Off, then every app with a TV entry point by name. Saved at once; it is read on the next boot. */
@@ -317,7 +504,19 @@ public final class LauncherSettingsActivity extends Activity {
                         : wallpaperCurrent != null ? wallpaperCurrent
                         : getString(R.string.wallpaper_theme_default)));
         openOnStartChoice.setText(getString(R.string.open_on_start_state, openOnStartLabel()));
+        themeChoice.setText(getString(R.string.theme_state, themeLabel()));
         followThemeChoice.setSelected(!hasOnTvChoices());
+    }
+
+    /** The row's current theme: the one applied here, the built-in config, or "pushed" for anything else. */
+    private String themeLabel() {
+        String name = choices.getString(BUNDLED_THEME_KEY, null);
+        File dir = Config.dir(this);
+        boolean overlay = dir != null && new File(dir, Config.FILE_NAME).isFile();
+        if (name == null || (name.isEmpty() == overlay)) {
+            return getString(overlay ? R.string.theme_pushed : R.string.theme_builtin);
+        }
+        return name.isEmpty() ? getString(R.string.theme_builtin) : ThemeBundle.label(name, ThemeInstaller.overlay(this));
     }
 
     private boolean hasOnTvChoices() {

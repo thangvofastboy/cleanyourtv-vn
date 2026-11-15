@@ -13,8 +13,10 @@ android {
         applicationId providers.gradleProperty('launcherApplicationId').getOrElse('com.gathin.tvhome')
         minSdk 26
         targetSdk 34
-        versionCode 14
-        versionName '3.5'
+        // This fork (thangvofastboy/cleanyourtv-vn): 1000 and up, far above upstream's 14, so the in-app update
+        // compares against its own releases. Release asset: cleanyourtv-vn-<versionCode>.apk, tag v<versionName>.
+        versionCode 1000
+        versionName '1.0.0-vn'
     }
 
     buildTypes {
@@ -36,6 +38,11 @@ android {
         }
     }
 
+    buildFeatures {
+        // BuildConfig.VERSION_CODE / VERSION_NAME for the in-app update check (Updates).
+        buildConfig true
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -47,4 +54,62 @@ dependencies {
     implementation 'androidx.dynamicanimation:dynamicanimation:1.0.0'
     // Test only (never in the APK): plain JVM tests for the module card validators, src/test.
     testImplementation 'junit:junit:4.13.2'
+    // Test only: the real org.json, since android.jar's copy is a stub on the JVM (ThemeBundle, Updates tests).
+    testImplementation 'org.json:json:20240303'
+}
+
+// ---- bundled themes (this fork's on-TV theme picker) ----------------------------------------------------------
+// Copies the listed folders of ../../themes into the APK's assets at build time, so nothing is duplicated in git:
+// config.json, wallpaper.jpg and wallpapers/ (pictures and captions.txt) only, never screenshot.jpg or scripts.
+// themes/index.txt lists them as "name<TAB>path" lines in this order; ThemeBundle reads it.
+abstract class BundleThemes extends DefaultTask {
+    @InputDirectory
+    @PathSensitive(PathSensitivity.RELATIVE)
+    abstract DirectoryProperty getThemesDir()
+
+    @Input
+    abstract ListProperty<String> getNames()
+
+    @OutputDirectory
+    abstract DirectoryProperty getOutputDir()
+
+    @TaskAction
+    void bundle() {
+        File out = getOutputDir().get().asFile
+        out.deleteDir()   // not project.delete(): Task.project is not allowed at execution with the configuration cache
+        File root = new File(out, 'themes')
+        root.mkdirs()
+        StringBuilder index = new StringBuilder()
+        for (String name : getNames().get()) {
+            File src = getThemesDir().get().dir(name).asFile
+            if (!new File(src, 'config.json').isFile()) throw new GradleException("themes/$name has no config.json")
+            List<String> files = ['config.json']
+            if (new File(src, 'wallpaper.jpg').isFile()) files << 'wallpaper.jpg'
+            File coll = new File(src, 'wallpapers')
+            if (coll.isDirectory()) {
+                coll.listFiles().findAll { it.isFile() && !it.name.startsWith('.') && it.name ==~ /[A-Za-z0-9_.-]+\.(?i:jpg|jpeg|png|webp)|captions\.txt/ }
+                        .collect { it.name }.sort().each { files << "wallpapers/$it".toString() }
+            }
+            for (String f : files) {
+                File dst = new File(root, "$name/$f")
+                dst.parentFile.mkdirs()
+                java.nio.file.Files.copy(new File(src, f).toPath(), dst.toPath())
+                index.append(name).append('\t').append(f).append('\n')
+            }
+        }
+        new File(root, 'index.txt').setText(index.toString(), 'UTF-8')
+    }
+}
+
+def bundleThemes = tasks.register('bundleThemes', BundleThemes) {
+    themesDir = layout.projectDirectory.dir('../../themes')
+    names = ['dong-son', 'cinematic', 'glass', 'glass-gallery', 'minimal', 'dock-glass', 'aurora', 'red-rain',
+             'ridgelines', 'christmas']
+    outputDir = layout.buildDirectory.dir('generated/themeAssets')
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(bundleThemes) { it.outputDir }
+    }
 }

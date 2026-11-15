@@ -8,6 +8,11 @@
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- This fork only: the network is used solely when "Check for updates" is pressed in Launcher settings
+         (Updates, UpdateClient): one GitHub API request and, on request, one APK download. Nothing in the
+         background, on boot or on Home. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Needed since Android 10 to read the Wi-Fi network name for the network pill. Never requested at
          runtime: build-and-install grants it with pm grant, so lint's Android 12 "ask for COARSE with
@@ -25,6 +30,20 @@
     <!-- Android 11+ package visibility: lets the launcher list the TV apps it shows as tiles, and the
          apps that declare a module card (docs/specs/card.md). -->
     <queries>
+        <!-- The quick settings panel's rows (quick_*_targets in config.xml), this fork. -->
+        <package android:name="com.android.tv.settings" />
+        <intent>
+            <action android:name="android.settings.SOUND_SETTINGS" />
+        </intent>
+        <intent>
+            <action android:name="android.settings.BLUETOOTH_SETTINGS" />
+        </intent>
+        <intent>
+            <action android:name="android.settings.WIRELESS_SETTINGS" />
+        </intent>
+        <intent>
+            <action android:name="android.settings.APPLICATION_SETTINGS" />
+        </intent>
         <!-- The standard settings handlers, so package visibility doesn't hide them and send the pills to a vendor fallback by mistake. -->
         <intent>
             <action android:name="android.settings.SETTINGS" />
@@ -76,6 +95,7 @@
         android:banner="@drawable/banner"
         android:theme="@style/Theme.TvHome"
         android:allowBackup="false"
+        android:usesCleartextTraffic="false"
         android:localeConfig="@xml/locales_config">
 
         <activity
@@ -231,6 +251,10 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+        <!-- This fork's in-app update: PackageInstaller's answer, sent only by an explicit PendingIntent. -->
+        <receiver
+            android:name=".UpdateStatusReceiver"
+            android:exported="false" />
         <receiver
             android:name=".GuardConfig"
             android:exported="true"

@@ -108,6 +108,11 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/themeChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="28dp" />
+
+        <TextView
             android:id="@+id/wallpaperChoice"
             style="@style/SettingsRow"
             android:layout_marginTop="28dp" />
@@ -169,5 +174,16 @@
             style="@style/SettingsRow"
             android:layout_marginTop="18dp"
             android:text="@string/tv_settings" />
+
+        <TextView
+            android:id="@+id/stockLauncherChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="18dp"
+            android:text="@string/stock_return_label" />
+
+        <TextView
+            android:id="@+id/updateChoice"
+            style="@style/SettingsRow"
+            android:layout_marginTop="18dp" />
     </LinearLayout>
 </ScrollView>

@@ -201,6 +201,8 @@ final class Config {
     final String clockFormat;
     /** The Settings button opens the quick settings panel instead of the TV's Settings (settings_key_panel). */
     final boolean settingsKeyPanel;
+    /** settings_pill_panel: the Settings pill on Home opens QuickSettingsActivity instead of the TV's Settings. */
+    boolean settingsPillPanel;
     /** Home puts the remote's accessibility helpers back after a force stop (restore_key_services; ServiceRepair). */
     final boolean restoreKeyServices;
     /** Whether themes may show a wallpaper (config.json, wallpaper). */
@@ -506,6 +508,7 @@ final class Config {
         int skyIntensity = res.getInteger(R.integer.sky_intensity);
         int[] settingsKeycodes = res.getIntArray(R.array.settings_key_keycodes);
         boolean settingsKeyPanel = res.getBoolean(R.bool.settings_key_panel);
+        boolean settingsPillPanel = res.getBoolean(R.bool.settings_pill_panel);
         boolean restoreKeyServices = res.getBoolean(R.bool.restore_key_services);
         int[] inputKeycodes = res.getIntArray(R.array.input_key_keycodes);
         boolean handleViewInputs = res.getBoolean(R.bool.handle_view_inputs);
@@ -623,6 +626,7 @@ final class Config {
             skyIntensity = integer(json, "sky_intensity", skyIntensity, 0, 100);
             settingsKeycodes = intArray(json, "settings_key_keycodes", settingsKeycodes);
             settingsKeyPanel = bool(json, "settings_key_panel", settingsKeyPanel);
+            settingsPillPanel = bool(json, "settings_pill_panel", settingsPillPanel);
             restoreKeyServices = bool(json, "restore_key_services", restoreKeyServices);
             inputKeycodes = intArray(json, "input_key_keycodes", inputKeycodes);
             handleViewInputs = bool(json, "handle_view_inputs", handleViewInputs);
@@ -643,7 +647,7 @@ final class Config {
             powerOnHomeAlways = bool(json, "power_on_home_always", powerOnHomeAlways);
             inputsConnectedOnly = bool(json, "inputs_connected_only", inputsConnectedOnly);
             inputsCecStateOnly = bool(json, "inputs_cec_state_only", inputsCecStateOnly);
-            clockFormat = string(json, CLOCK_FORMAT_KEY, clockFormat);
+            clockFormat = string(json, "clock_format", clockFormat);
             dockGlass = bool(json, "dock_glass", dockGlass);
             dockEvenPadding = bool(json, "dock_even_padding", dockEvenPadding);
             dockBand = bool(json, "dock_band", dockBand);
@@ -717,7 +721,7 @@ final class Config {
         Festival festival = json == null ? Festival.NONE : Festival.parse(festivalName(json),
                 string(json, "festival_until", ""), string(json, "greeting", ""), string(json, "accent_color", ""));
 
-        return new Config(dock, fillDock, hidden, libraryApps, libraryExcludedApps, liveTv, liveTvAction, liveTvInputId, packageMap(launchActions), packageMap(appLabels),
+        Config config = new Config(dock, fillDock, hidden, libraryApps, libraryExcludedApps, liveTv, liveTvAction, liveTvInputId, packageMap(launchActions), packageMap(appLabels),
                 packageMap(appBanners), panelService, panelAction, panelExtra, coocaaSources, inputAction, inputSources, inputUriScheme, Math.max(1, columns),
                 Math.max(0, rowsBelow), animations, advancedEffects, shamsi, greetingName, moduleCards, reducedMotion, bootToLiveTv,
                 openOnStartChoice, dockTitle, dockRow, topMenu, launcherSettingsButton, reorderButton, showNetworkPill, showInputsPill,
@@ -733,6 +737,8 @@ final class Config {
                 dateBelowClock, vpnPill, locale, powerOnHomeAlways, inputsConnectedOnly, inputsCecStateOnly,
                 Math.max(0, Math.min(600, openOnStartNetworkWait)), openOnStartOnWake, iconOnlyVpn, clockFormat, backOpensClock, glowSnap,
                 settingsKeyClearTask);
+        config.settingsPillPanel = settingsPillPanel;
+        return config;
     }
 
     /**

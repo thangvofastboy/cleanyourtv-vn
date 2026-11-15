@@ -33,6 +33,14 @@ rule sit on its wanted list until a screenshot arrives.
 | `festival` | <img src="../themes/dussehra/screenshot.jpg" width="320" alt="festival on a TV"> |
 | `seasonal_skin` | <img src="../themes/halloween/screenshot.jpg" width="320" alt="seasonal_skin on a TV"> |
 | `settings_key_panel` | <img src="quick-settings-panel.jpg" width="320" alt="settings_key_panel on a TV"> |
+| `settings_pill_panel` | <img src="quick-settings-panel.jpg" width="320" alt="settings_pill_panel: the quick settings panel (stand-in until a shot from this fork's TV)"> |
+| `quick_sound_targets` | <img src="quick-settings-panel.jpg" width="320" alt="quick_sound_targets: the quick settings panel (stand-in until a shot from this fork's TV)"> |
+| `quick_sleep_timer_targets` | <img src="quick-settings-panel.jpg" width="320" alt="quick_sleep_timer_targets: the quick settings panel (stand-in until a shot from this fork's TV)"> |
+| `quick_bluetooth_targets` | <img src="quick-settings-panel.jpg" width="320" alt="quick_bluetooth_targets: the quick settings panel (stand-in until a shot from this fork's TV)"> |
+| `quick_network_targets` | <img src="quick-settings-panel.jpg" width="320" alt="quick_network_targets: the quick settings panel (stand-in until a shot from this fork's TV)"> |
+| `quick_display_targets` | <img src="quick-settings-panel.jpg" width="320" alt="quick_display_targets: the quick settings panel (stand-in until a shot from this fork's TV)"> |
+| `quick_apps_targets` | <img src="quick-settings-panel.jpg" width="320" alt="quick_apps_targets: the quick settings panel (stand-in until a shot from this fork's TV)"> |
+| `quick_tv_settings_targets` | <img src="quick-settings-panel.jpg" width="320" alt="quick_tv_settings_targets: the quick settings panel (stand-in until a shot from this fork's TV)"> |
 | `home_idle_clock_minutes` | <img src="clock-screensaver.png" width="320" alt="home_idle_clock_minutes on a TV"> |
 | `back_opens_clock` | <img src="switches/back_opens_clock.jpg" width="320" alt="back_opens_clock on a TV"> |
 | `gamepad_passthrough` | <img src="switches/gamepad_passthrough.jpg" width="320" alt="gamepad_passthrough on a TV"> |

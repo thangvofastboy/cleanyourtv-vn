@@ -21,3 +21,11 @@ bench-results/
 *.aab
 launcher/hs_err_pid*.log
 launcher/replay_pid*.log
+
+# This fork (cleanyourtv-vn): release builds, signing keys and ADB keys never go into git.
+dist/
+tools/venv/
+*.keystore*
+*.jks*
+/adbkey
+/adbkey.pub

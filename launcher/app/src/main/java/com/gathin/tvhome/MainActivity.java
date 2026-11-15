@@ -256,6 +256,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** config settings_key_keycodes / settings_key_panel, so the Settings button works on Home without HomeKeyService. */
     private int[] settingsKeycodes = new int[0];
     private boolean settingsKeyPanel;
+    /** settings_pill_panel: the Settings pill opens the quick settings panel. */
+    private boolean settingsPillPanel;
     private boolean settingsKeyClearTask;
     /** Calmer motion for weak GPUs (config.xml, reduced_motion): stiff spring, short fades, no replay. */
     private boolean reducedMotion;
@@ -326,6 +328,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * reach Home after onPause, when that key opened another app, and must not start the clock over the app.
      */
     private boolean resumed;
+    /** A theme applied from Launcher settings finishes on a worker, possibly after settings closed and Home already
+     *  resumed; its change-count bump then rebuilds Home here instead of waiting for the next resume. Held in a
+     *  field: SharedPreferences keeps listeners weakly. */
+    private final android.content.SharedPreferences.OnSharedPreferenceChangeListener settingsListener = (prefs, key) -> {
+        if (!Config.SETTINGS_REVISION_KEY.equals(key) || !resumed || isFinishing() || settingsRecreationPending) return;
+        if (Config.settingsChanged(settingsRevision, settingsRevision())) recreateOnce();
+    };
     /** Rebuild the tiles on the way back to Home only when apps changed meanwhile (TileRefresh). */
     private final TileRefresh tileRefresh = new TileRefresh();
     /** PackageManager's change counter at the last rebuild, to catch a package broadcast that never arrived. */
@@ -442,8 +451,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             updateGreeting();
             updatePanel();
             // The pill follows the network callbacks and each return to Home; only the festive light follows the
-            // signal level, so only it needs this minute's binder calls (about 7 ms on the UI thread).
-            if (festive) updateWifiLabel();
+            // signal level, so only it needs this minute's binder calls (about 7 ms, read off the UI thread).
+            if (festive) updateWifiLabelAsync();
             sky.update();
             wallpaperPlayer.update();
             handler.postDelayed(this, MINUTE_MS);
@@ -472,9 +481,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // off the list (needs WRITE_SECURE_SETTINGS, granted by build-and-install with RESTORE_KEY_SERVICES=1).
         if (cfg.restoreKeyServices) ServiceRepair.restore(this);
         settingsRevision = settingsRevision();
+        getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE).registerOnSharedPreferenceChangeListener(settingsListener);
         applyViewInputsHandler(cfg.handleViewInputs);
         settingsKeycodes = cfg.settingsKeycodes;
         settingsKeyPanel = cfg.settingsKeyPanel;
+        settingsPillPanel = cfg.settingsPillPanel;
         settingsKeyClearTask = cfg.settingsKeyClearTask;
         COLUMNS = cfg.columns;
         animations = cfg.animations;
@@ -836,6 +847,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnSettings.setOnClickListener(v -> {
             if (launcherSettingsButton) startActivityForResult(
                     new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST);
+            else if (settingsPillPanel) open(quickSettingsIntent());
             else open(systemIntent(Settings.ACTION_SETTINGS));
         });
         btnReorder = findViewById(R.id.btnReorder);
@@ -1093,14 +1105,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         resumed = true;
         // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(LocalDate.now())) {
-            recreate();
+            recreateOnce();
             return;
         }
         // Something changed in Launcher settings: rebuild with it, however the settings were left. Only Back
         // delivered their RESULT_OK; Home (the remote's button) clears them off this task and the result comes
         // back cancelled, so a new wallpaper or layout waited for the next process start.
         if (Config.settingsChanged(settingsRevision, settingsRevision())) {
-            recreate();
+            recreateOnce();
             return;
         }
         restartIdleClock();
@@ -1167,10 +1179,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 && data != null && data.getBooleanExtra(LauncherSettingsActivity.EXTRA_REORDER, false)) {
             getIntent().putExtra(LauncherSettingsActivity.EXTRA_REORDER, true);
             // The old activity must not consume the pending action, or rebuild a second time in onResume.
-            settingsRecreationPending = true;
             settingsRevision = settingsRevision();
-            recreate();
+            recreateOnce();
         }
+    }
+
+    /** The revision check in onResume and the preferences listener can both fire for one change: rebuild once. */
+    private void recreateOnce() {
+        if (settingsRecreationPending) return;
+        settingsRecreationPending = true;
+        recreate();
     }
 
     private void startPendingSettingsReorder() {
@@ -1386,6 +1404,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        networkReader.shutdownNow();
+        getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(settingsListener);
         ViewTreeObserver tree = getWindow().getDecorView().getViewTreeObserver();
         if (tree.isAlive()) tree.removeOnGlobalFocusChangeListener(glassFocusListener);
         RemoteKeys.release(this);
@@ -1413,8 +1433,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         for (int code : settingsKeycodes) {
             if (event.getKeyCode() != code) continue;
             if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
-                Intent settings = settingsKeyPanel ? new Intent(this, QuickSettingsActivity.class)
-                        : systemIntent(Settings.ACTION_SETTINGS);
+                Intent settings = settingsKeyPanel ? quickSettingsIntent() : systemIntent(Settings.ACTION_SETTINGS);
                 // settings_key_clear_task, as in HomeKeyService: Back from Settings goes Home, not to a vendor page.
                 if (settingsKeyClearTask && !settingsKeyPanel) settings.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 open(settings);
@@ -2940,8 +2959,42 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     /** Shows the Wi-Fi network name on the button when we can read it, otherwise the connection type. */
-    @SuppressWarnings("deprecation")
     private void updateWifiLabel() {
+        networkGeneration++;   // a minute-tick read still on its way is older than this one
+        showNetwork(readNetwork());
+    }
+
+    /** Counts network reads on the UI thread, so a late worker read never overwrites a newer one. */
+    private int networkGeneration;
+
+    /** What the network pill shows, read by {@link #readNetwork()} (binder calls only, so any thread) and drawn by
+     *  {@link #showNetwork}. */
+    private static final class NetState {
+        String text;
+        boolean vpn, online, validated, steady;
+        int icon, flame;
+    }
+
+    /** The festive minute tick: the binder reads (about 7 ms) on a worker, the pill updated on the UI thread. */
+    private final java.util.concurrent.ExecutorService networkReader =
+            java.util.concurrent.Executors.newSingleThreadExecutor(r -> new Thread(r, "network-pill"));
+
+    private void updateWifiLabelAsync() {
+        int generation = ++networkGeneration;
+        try {
+            networkReader.execute(() -> {
+                NetState state = readNetwork();
+                handler.post(() -> {
+                    if (!isDestroyed() && generation == networkGeneration) showNetwork(state);
+                });
+            });
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            // shut down with the activity
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private NetState readNetwork() {
         String text = getString(R.string.wifi);
         boolean vpn = false, online = false, validated = false;
         int icon = R.drawable.ic_wifi;
@@ -2987,6 +3040,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         } catch (Exception ignored) {
         }
+        NetState n = new NetState();
+        n.text = text;
+        n.vpn = vpn;
+        n.online = online;
+        n.validated = validated;
+        n.icon = icon;
+        n.flame = flame;
+        n.steady = steady;
+        return n;
+    }
+
+    private void showNetwork(NetState n) {
+        String text = n.text;
+        boolean vpn = n.vpn, online = n.online, validated = n.validated, steady = n.steady;
+        int icon = n.icon, flame = n.flame;
         // With a VPN app configured, a VPN that is down matters too: show a red "VPN off" capsule then.
         boolean vpnDown = !vpn && online && !vpnApp.isEmpty();
         if (vpnPill) updateVpnPill(vpn);
@@ -3080,6 +3148,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * Settings that floats up.
      */
     private void applyFestiveSkin(TextView inputs, TextView settings) {
+        if (festival.isVietnam()) {
+            VietnamIconDrawable flag = new VietnamIconDrawable(density, VietnamIconDrawable.FLAG);
+            VietnamIconDrawable badge = new VietnamIconDrawable(density, VietnamIconDrawable.STAR_BADGE);
+            StarLampDrawable star = new StarLampDrawable(density);
+            flag.setReducedMotion(reducedMotion);
+            badge.setReducedMotion(reducedMotion);
+            star.setReducedMotion(reducedMotion);
+            lamp = star;
+            setFestiveIcon(inputs, flag);
+            setFestiveIcon(btnWifi, star);
+            setFestiveIcon(settings, badge);
+            addFocusAction(inputs, flag::nudge);
+            addFocusAction(settings, badge::nudge);
+            return;
+        }
         if (festival.isHalloween()) {
             SpookyIconDrawable bat = new SpookyIconDrawable(getResources(), density, SpookyIconDrawable.BAT);
             SpookyIconDrawable ghost = new SpookyIconDrawable(getResources(), density, SpookyIconDrawable.GHOST);
@@ -3133,7 +3216,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             bats.play(16, 2800, () -> root.removeView(bats));
             return;
         }
-        PetalShowerView shower = new PetalShowerView(this);
+        // The Vietnam skin drops gold stars; the others marigold petals.
+        PetalShowerView shower = new PetalShowerView(this, festival.isVietnam());
         root.addView(shower, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         shower.play(60, 2200, () -> root.removeView(shower));
@@ -3218,6 +3302,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Every settings entry shares the standard intent and the vendor fallback (SystemSettings). */
     private Intent systemIntent(String standardAction) {
         return SystemSettings.intent(this, standardAction);
+    }
+
+    /** The quick settings panel, told whether Home's Inputs menu has anything (the Inputs pill), so it need not ask
+     *  TvInputManager itself. */
+    private Intent quickSettingsIntent() {
+        Intent panel = new Intent(this, QuickSettingsActivity.class);
+        // top_menu folds the pill away whatever the inputs; the panel then works it out itself.
+        if (!topMenu && btnInputs != null) {
+            panel.putExtra(QuickSettingsActivity.EXTRA_HAS_INPUTS, btnInputs.getVisibility() == View.VISIBLE);
+        }
+        return panel;
     }
 
     /** Hides the Inputs pill when it would have nothing to list: streaming boxes have no HDMI-in, AV or tuner. */

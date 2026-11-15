@@ -17,10 +17,10 @@
 
     <!-- Apps pinned to the dock row at the bottom, in this order. Missing apps are skipped. -->
     <string-array name="dock_apps">
-        <item>com.netflix.ninja</item>
-        <item>com.amazon.amazonvideo.livingroom</item>
-        <item>com.google.android.youtube.tv</item>
-        <item>in.startv.hotstar</item>
+        <item>org.smarttube.stable</item>
+        <item>net.fptplay.ottbox</item>
+        <item>com.vieon.tv</item>
+        <item>com.viettel.tv360.tv</item>
     </string-array>
     <!-- With fewer dock_apps than columns (or a dock app that is not installed), the free dock slots take
          the first grid apps, so the dock never shows a gap. false leaves them empty (#162); a theme can
@@ -187,6 +187,51 @@
          with TV settings, Display, Network, Apps (re-enable an app) and Launcher settings, over whatever is on screen.
          Both keys can also be set from a theme's config.json ("settings_key_keycodes": [83]). -->
     <bool name="settings_key_panel">false</bool>
+    <!-- true: the Settings pill on Home opens that same panel instead of the TV's Settings (this fork). Also
+         "settings_pill_panel" in a theme's config.json. Not used with launcher_settings_button or top_menu. -->
+    <bool name="settings_pill_panel">false</bool>
+    <!-- The quick settings panel's system rows (this fork). Each row opens the first candidate the TV can open:
+         a settings action, or an activity as package/class (".Class" is relative to the package). A row with no
+         candidate that resolves is left out of the panel, so a row never does nothing. Tune after probing the TV:
+         `cmd package query-activities -a ACTION` and `dumpsys package com.android.tv.settings`.
+         A component's package must be visible to the launcher (<queries> in AndroidManifest.xml). -->
+    <string-array name="quick_sound_targets" translatable="false">
+        <item>android.settings.SOUND_SETTINGS</item>
+        <item>com.android.tv.settings/.device.displaysound.DisplaySoundActivity</item>
+        <item>com.android.tv.settings/.device.sound.SoundActivity</item>
+        <item>com.android.tv.settings/.partnercustomizer.sound.SoundActivity</item>
+    </string-array>
+    <string-array name="quick_sleep_timer_targets" translatable="false">
+        <item>com.android.tv.settings/.device.power.PowerActivity</item>
+        <item>com.android.tv.settings/.device.eco.EnergyModesActivity</item>
+        <item>com.android.tv.settings/.partnercustomizer.timer.TimerActivity</item>
+    </string-array>
+    <string-array name="quick_bluetooth_targets" translatable="false">
+        <item>android.settings.BLUETOOTH_SETTINGS</item>
+        <item>com.android.tv.settings/.accessories.AccessoriesActivity</item>
+        <item>com.android.tv.settings/.accessories.AddAccessoryActivity</item>
+    </string-array>
+    <string-array name="quick_network_targets" translatable="false">
+        <item>android.settings.WIFI_SETTINGS</item>
+        <item>android.settings.WIRELESS_SETTINGS</item>
+        <item>com.android.tv.settings/.connectivity.NetworkActivity</item>
+    </string-array>
+    <string-array name="quick_display_targets" translatable="false">
+        <item>com.android.tv.settings/com.xiaomi.mitv.settings.picture.PictureActivity</item>
+        <item>android.settings.DISPLAY_SETTINGS</item>
+        <item>com.android.tv.settings/.device.displaysound.DisplaySoundActivity</item>
+        <item>com.android.tv.settings/.partnercustomizer.picture.PictureActivity</item>
+    </string-array>
+    <string-array name="quick_apps_targets" translatable="false">
+        <item>android.settings.MANAGE_APPLICATIONS_SETTINGS</item>
+        <item>android.settings.APPLICATION_SETTINGS</item>
+        <item>com.android.tv.settings/.device.apps.AppsActivity</item>
+    </string-array>
+    <!-- TV settings: then settings_fallback_components (vendor apps) are tried, as the Settings pill does. -->
+    <string-array name="quick_tv_settings_targets" translatable="false">
+        <item>android.settings.SETTINGS</item>
+        <item>com.android.tv.settings/.MainSettings</item>
+    </string-array>
     <!-- true: those Settings buttons clear the TV Settings task before opening Settings (with settings_key_panel off).
          On some MediaTek boards KEYCODE_SETTINGS is also a global key: com.mediatek.tv.service opens Display & Sound in
          the same task before the helper sees the press, so Settings stacked on it and Back landed there (Skyworth
@@ -467,13 +512,13 @@
          slides with no bounce and settles within 5 frames, every animation lasts 90 ms or less, names, top
          shelf, glow and highlight appear instead of fading, and there is no tile entrance. Set it
          here or with "reduced_motion": true in a theme's config.json; false keeps the normal motion. -->
-    <bool name="reduced_motion">false</bool>
+    <bool name="reduced_motion">true</bool>
 
     <!-- The glass highlight springs past the tile it moves to and the focused tile zooms past its size
          before settling. false: both go straight there, with no bounce, while scrolling stays smooth
          (reduced_motion also removes the overshoot, but scrolls in one jump). Can also be set with
          "focus_overshoot" in a theme's config.json. -->
-    <bool name="focus_overshoot">true</bool>
+    <bool name="focus_overshoot">false</bool>
 
     <!-- One line under the clock: CPU, free memory and free storage. Off by default; a theme can set
          "show_stats": true. Nothing is read, and the clock does not move, while this is false. -->
@@ -518,7 +563,7 @@
     <!-- The glow behind the dock in the focused app's colour (red for YouTube, blue for Prime Video). false keeps
          only background_color or the wallpaper behind everything. Can also be set with "ambient_glow": false in a
          theme's config.json. -->
-    <bool name="ambient_glow">true</bool>
+    <bool name="ambient_glow">false</bool>
     <!-- true: when the focus moves to an app of another colour, the ambient glow takes the new colour in one frame
          instead of dimming and fading back in. Each frame of that fade repaints the whole screen, about 40 per key
          press, which a slow GPU such as the Mali-G52 cannot keep up with. Can also be set with "glow_snap" in a

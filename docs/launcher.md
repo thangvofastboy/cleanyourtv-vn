@@ -56,6 +56,10 @@ The launcher's own page has these rows, top to bottom:
   its own row (`dock_row`, on by default).
 - **Clock**: **System** follows the TV's 12- or 24-hour setting; **12-hour** or **24-hour** sets the launcher's
   clocks (Home and the clock screensaver) to that, whatever the TV uses (`clock_format` in a theme).
+- **Themes** (this fork): the themes bundled in the APK at build time (the list in `launcher/app/build.gradle`),
+  after **Built-in (config.xml)**. OK writes the same files `tools/theme.sh` pushes, with this TV's dock, hidden apps,
+  four columns and the quick settings panel laid over each (`launcher/app/src/main/assets/theme_overlay.json`),
+  then Home rebuilds. The built-in entry does what `theme.sh --reset` does.
 - **Wallpaper**: one picture from the theme's collection (or its `wallpaper.jpg`), **None**, or **Theme
   default**. A pick holds that picture and stops the rotation until you choose Theme default, press
   Follow theme, or push the theme again.
@@ -67,6 +71,14 @@ The launcher's own page has these rows, top to bottom:
   clears them too.
 - **Choose default home** opens Android's home picker, and **TV system settings** the TV's own settings
   page.
+- **Return to stock launcher** (this fork): shows the adb commands that turn the TV's stock launcher (and
+  setupwraith) back on and make it Home again. Nothing on the TV changes from this row; Home stays on this
+  launcher until those commands run. The same steps are in the [README](../README.md#quay-ve-launcher-goc).
+- **Check for updates** (this fork): the only time the launcher uses the network. One request to the latest
+  release of `thangvofastboy/cleanyourtv-vn` on GitHub; when it holds a newer `cleanyourtv-vn-<versionCode>.apk`,
+  the next press downloads it (https from GitHub hosts only, five minutes at most), checks it is this launcher,
+  newer and signed with the same key (or a key Android's key rotation vouches for), and hands exactly those bytes
+  to Android's installer, which asks you to confirm.
 
 **Change the default home:** Launcher settings and the optional Default-home tile
 (`show_home_settings_shortcut`) open Android's home picker. Choose the original launcher to stop using
