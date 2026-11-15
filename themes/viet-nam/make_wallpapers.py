@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Draw the viet-nam theme's wallpapers: the national flag and a map of Viet Nam, our own drawing (CC0).
 
-The flag waves on the left, darkened so the clock, greeting and dock stay readable; the map sits on the right
-half: the mainland with Phu Quoc, Con Dao and the coastal islands, the Hoang Sa (Paracel) and Truong Sa (Spratly)
-archipelagos as island dots inside a thin dashed outline each, labelled in Vietnamese, and "Bien Dong" on the sea.
+A stylised waving flag (morning/night) or faceted gold star emblem (evening) sits on the left with a soft
+atmospheric fade so the clock, greeting and dock stay readable; a luminous golden-outlined map of Viet Nam
+sits on the right with Phu Quoc, Con Dao, the coastal islands, and the Hoang Sa (Paracel) and Truong Sa
+(Spratly) archipelagos inside modern corner-bracketed frames, labelled in Vietnamese, with "Bien Dong" on
+the sea.
 
-The flag follows the official construction: a red field (#DA251D) two units high for three long (2:3), and a gold
-(#FFCD00) five-pointed star at the centre whose points lie on a circle with a radius of one fifth of the flag's
-length (the star is 2/5 of the length across, 3/5 of the height), as Star.java draws it in the launcher.
+The flag follows the official construction: a red field (#DA251D) two units high for three long (2:3), and a
+gold (#FFCD00) five-pointed star at the centre whose points lie on a circle with a radius of one fifth of the
+flag's length (the star is 2/5 of the length across, 3/5 of the height), as Star.java draws it in the launcher.
 
 The outline is not drawn by hand. It comes from Natural Earth's 1:10m Admin 0 countries in the Viet Nam point of
 view (public domain), which assigns both archipelagos to Viet Nam:
@@ -29,11 +31,12 @@ the same pictures.
 import argparse
 import json
 import math
+import random
 import subprocess
 import tempfile
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 HERE = Path(__file__).resolve().parent
 W, H = 1920, 1080
@@ -54,7 +57,7 @@ PX_PER_DEG = (Y_BOT - Y_TOP) / (LAT_N - LAT_S)
 PX_PER_DEG_LON = PX_PER_DEG * math.cos(math.radians(15))
 
 # The archipelagos: what counts as one of their islands (Natural Earth's minor islands are filtered by these boxes)
-# and where their dashed outline goes.
+# and where their frame goes.
 HOANG_SA = dict(lon=(110.9, 113.2), lat=(15.5, 17.3))
 TRUONG_SA = dict(lon=(111.5, 116.3), lat=(7.0, 11.7))
 
@@ -98,15 +101,24 @@ ISLANDS = [
 ]
 
 PALETTES = {
-    # morning: the flag in front, warm red-brown sea
-    "01-co-va-ban-do.jpg": dict(flag=0.56, bg=(24, 9, 8), land=(92, 30, 21), coast=GOLD, island=GOLD,
-                                grid=(44, 18, 15), ink=(255, 222, 128), sea=(205, 150, 90)),
-    # evening: the map alone in gold on deep red
-    "02-ban-do-vang.jpg": dict(flag=0.0, mark=(46, 13, 10), bg=(30, 8, 7), land=(104, 34, 22), coast=(255, 214, 72),
-                               island=(255, 214, 72), grid=(52, 18, 15), ink=(255, 226, 140), sea=(214, 158, 96)),
-    # night: a dark flag and a dim map
-    "03-dem-co-va-ban-do.jpg": dict(flag=0.38, bg=(9, 9, 13), land=(60, 22, 18), coast=(226, 182, 20),
-                                    island=(226, 182, 20), grid=(26, 24, 30), ink=(232, 200, 110), sea=(170, 140, 110)),
+    # morning: stylised waving flag on the left, warm crimson-obsidian sea and luminous gold map
+    "01-co-va-ban-do.jpg": dict(
+        flag=0.58, bg=(14, 7, 7), glow_l=(46, 13, 11), glow_r=(38, 16, 12),
+        land=(76, 23, 17), coast=GOLD, island=GOLD,
+        grid=(36, 16, 14), ink=(255, 224, 134), sea=(214, 162, 100),
+    ),
+    # evening: faceted gold star emblem on the left, map in antique gold on deep crimson
+    "02-ban-do-vang.jpg": dict(
+        flag=0.0, mark=True, bg=(16, 6, 6), glow_l=(52, 22, 10), glow_r=(44, 16, 12),
+        land=(86, 26, 18), coast=(255, 214, 72), island=(255, 214, 72),
+        grid=(42, 17, 14), ink=(255, 228, 144), sea=(222, 168, 104),
+    ),
+    # night: nocturnal midnight-indigo sea, soft glowing flag and luminous constellation coastline
+    "03-dem-co-va-ban-do.jpg": dict(
+        flag=0.38, bg=(7, 8, 13), glow_l=(28, 12, 18), glow_r=(18, 22, 34),
+        land=(40, 18, 22), coast=(232, 188, 42), island=(240, 200, 72),
+        grid=(22, 24, 34), ink=(232, 204, 124), sea=(172, 148, 116),
+    ),
 }
 
 FONT_DIRS = ["/usr/share/fonts/truetype/noto", "/usr/share/fonts/noto", "/usr/share/fonts/truetype/dejavu",
@@ -162,16 +174,16 @@ def load(folder):
 
 
 COASTAL_ISLANDS = [  # name, lat, lon, label offset x/y in 1x px, anchor
-    ("Cô Tô", 20.98, 107.77, 8, -6, "ls"),
-    ("Cát Bà", 20.80, 107.03, 8, 10, "lt"),
-    ("Bạch Long Vĩ", 20.13, 107.72, 8, 0, "lm"),
-    ("Cồn Cỏ", 17.16, 107.34, 8, 0, "lm"),
-    ("Lý Sơn", 15.38, 109.12, 8, 0, "lm"),
-    ("Phú Quý", 10.52, 108.93, 8, 0, "lm"),
-    ("Côn Đảo", 8.69, 106.61, 8, 0, "lm"),
-    ("Phú Quốc", 10.23, 103.96, -8, 0, "rm"),
-    ("Nam Du", 9.68, 104.35, -8, 0, "rm"),
-    ("Thổ Chu", 9.30, 103.48, 0, 8, "mt"),
+    ("Cô Tô", 20.98, 107.77, 9, -6, "ls"),
+    ("Cát Bà", 20.80, 107.03, 9, 10, "lt"),
+    ("Bạch Long Vĩ", 20.13, 107.72, 9, 0, "lm"),
+    ("Cồn Cỏ", 17.16, 107.34, 9, 0, "lm"),
+    ("Lý Sơn", 15.38, 109.12, 9, 0, "lm"),
+    ("Phú Quý", 10.52, 108.93, 9, 0, "lm"),
+    ("Côn Đảo", 8.69, 106.61, 9, 0, "lm"),
+    ("Phú Quốc", 10.23, 103.96, -9, 0, "rm"),
+    ("Nam Du", 9.68, 104.35, -9, 0, "rm"),
+    ("Thổ Chu", 9.30, 103.48, 0, 9, "mt"),
 ]
 
 
@@ -184,6 +196,10 @@ def xy(lon, lat):
     return ((X_E - (LON_E - lon) * PX_PER_DEG_LON) * S, (Y_TOP + (LAT_N - lat) * PX_PER_DEG) * S)
 
 
+def mix(c1, c2, t):
+    return tuple(round(a + (b - a) * t) for a, b in zip(c1, c2))
+
+
 def star(cx, cy, outer, turn=0.0):
     inner = outer * math.sin(math.radians(18)) / math.sin(math.radians(54))
     pts = []
@@ -192,6 +208,33 @@ def star(cx, cy, outer, turn=0.0):
         r = outer if i % 2 == 0 else inner
         pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
     return pts
+
+
+def make_backdrop(pal):
+    """Dual-aura atmospheric backdrop with smoothstep falloff and micro-dithering."""
+    bw, bh = 480, 270
+    lx, ly = 440 * bw / W, 580 * bh / H
+    rx, ry = 1360 * bw / W, 600 * bh / H
+    rad_l = bw * 0.42
+    rad_r = bw * 0.46
+    bg = pal["bg"]
+    gl = pal["glow_l"]
+    gr = pal["glow_r"]
+    buf = bytearray(bw * bh * 3)
+    rng = random.Random(2026)
+    idx = 0
+    for y in range(bh):
+        for x in range(bw):
+            dl = max(0.0, 1.0 - math.hypot(x - lx, y - ly) / rad_l)
+            dr = max(0.0, 1.0 - math.hypot(x - rx, y - ry) / rad_r)
+            tl = dl * dl * (3.0 - 2.0 * dl)
+            tr = dr * dr * (3.0 - 2.0 * dr)
+            n = rng.randint(-1, 1)
+            for c_bg, c_l, c_r in zip(bg, gl, gr):
+                v = round(c_bg + (c_l - c_bg) * tl + (c_r - c_bg) * tr) + n
+                buf[idx] = max(0, min(255, v))
+                idx += 1
+    return Image.frombytes("RGB", (bw, bh), bytes(buf)).resize((W, H), Image.BICUBIC)
 
 
 def flag(width):
@@ -203,33 +246,102 @@ def flag(width):
 
 
 def waving_flag(canvas, pal):
-    """The flag waving from a pole off the left edge, in column strips: each moves up or down along a sine and is
-    shaded a little with it (soft enough that RGB_565's steps stay a few broad folds)."""
-    fw = 1000 * S
+    """Stylised silk-wave flag on the left, softly feathered at its edges so it blends into the dark canvas."""
+    fw = 960 * S
     flat = flag(fw)
     fh = flat.height
-    x0, y0 = 0, 216 * S                     # the whole flag on screen, its star centred in it
-    wave = 560 * S
-    step = 3 * S
+    layer = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
+    x0, y0 = 20 * S, 240 * S
+    wave = 540 * S
+    step = 2 * S
     for x in range(0, fw, step):
         t = x / fw
-        phase = 2 * math.pi * x / wave + 0.6
-        dy = (8 + 26 * t) * S * math.sin(phase)
-        f = pal["flag"] * (1 + 0.11 * math.cos(phase))
-        strip = flat.crop((x, 0, min(fw, x + step), fh)).point(lambda v, f=f: min(255, int(v * f)))
-        canvas.paste(strip, (x0 + x, round(y0 + dy)))
+        phase = 2 * math.pi * x / wave + 0.55
+        dy = (7 + 24 * t) * S * math.sin(phase)
+        shade = pal["flag"] * (1.0 + 0.14 * math.cos(phase))
+        # Soft horizontal edge fade on the left and right ends of the silk banner
+        edge_a = min(1.0, t / 0.08) * min(1.0, (1.0 - t) / 0.12)
+        alpha = int(255 * (edge_a ** 0.75))
+        strip = flat.crop((x, 0, min(fw, x + step), fh)).point(lambda v, f=shade: min(255, int(v * f)))
+        strip_rgba = strip.convert("RGBA")
+        # Vertical soft fade at top and bottom edges of the banner
+        mask = Image.new("L", strip_rgba.size, alpha)
+        md = ImageDraw.Draw(mask)
+        fade_h = 14 * S
+        for yy in range(fade_h):
+            a_top = int(alpha * (yy / fade_h))
+            md.line([(0, yy), (strip_rgba.width, yy)], fill=a_top)
+            md.line([(0, fh - 1 - yy), (strip_rgba.width, fh - 1 - yy)], fill=a_top)
+        strip_rgba.putalpha(mask)
+        layer.paste(strip_rgba, (x0 + x, round(y0 + dy)), strip_rgba)
+    canvas.alpha_composite(layer)
 
 
-def dashed_box(draw, box, colour, width):
-    """A rounded dashed outline around an archipelago's box."""
+def stylised_star(canvas, cx, cy, outer, pal):
+    """A sculpted, faceted gold five-pointed star emblem with concentric Dong-Son-inspired rings."""
+    layer = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    bg = pal["bg"]
+
+    def m(t, alpha=255):
+        return mix(bg, GOLD, t) + (alpha,)
+
+    # Subtle outer orbital hairlines & concentric emblem rings
+    for rr, w, t in [(1.48, 1.0, 0.14), (1.30, 2.0, 0.30), (1.20, 1.2, 0.22), (1.10, 1.2, 0.18)]:
+        r = outer * rr
+        draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=m(t), width=round(w * S))
+
+    # Ring of 40 delicate beads
+    n = 40
+    for i in range(n):
+        a = 2 * math.pi * i / n
+        r = outer * 1.25
+        x, y = cx + r * math.cos(a), cy + r * math.sin(a)
+        d = 2.6 * S if i % 2 == 0 else 1.8 * S
+        draw.ellipse([x - d, y - d, x + d, y + d], fill=m(0.36 if i % 2 == 0 else 0.24))
+
+    # Radial compass rays between the star points
+    for i in range(5):
+        a = math.radians(-90 + 36 + 72 * i)
+        draw.line([(cx + outer * 0.56 * math.cos(a), cy + outer * 0.56 * math.sin(a)),
+                   (cx + outer * 1.13 * math.cos(a), cy + outer * 1.13 * math.sin(a))],
+                  fill=m(0.28), width=round(1.6 * S))
+
+    # Faceted 3D-style 5-pointed star (10 triangles meeting at the centre)
+    pts = star(cx, cy, outer)
+    for i in range(10):
+        p1 = pts[i]
+        p2 = pts[(i + 1) % 10]
+        # Alternate bright & warm-gold facets around each point
+        t_val = 0.54 if i % 2 == 0 else 0.32
+        draw.polygon([(cx, cy), p1, p2], fill=m(t_val))
+
+    # Crisp luminous rim and inner echo star
+    draw.line(pts + [pts[0]], fill=m(0.76), width=round(2.2 * S), joint="curve")
+    inner = star(cx, cy, outer * 0.50)
+    draw.line(inner + [inner[0]], fill=m(0.50), width=round(1.4 * S), joint="curve")
+
+    # Soft golden halo behind the star
+    halo = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
+    hd = ImageDraw.Draw(halo)
+    hr = outer * 0.95
+    hd.ellipse([cx - hr, cy - hr, cx + hr, cy + hr], fill=GOLD + (42,))
+    halo = halo.filter(ImageFilter.GaussianBlur(radius=34 * S))
+    canvas.alpha_composite(halo)
+    canvas.alpha_composite(layer)
+
+
+def modern_box(draw, box, colour, fill_tint, width):
+    """Architectural corner-bracket frame with ultra-faint dashed connecting hairlines."""
     (x1, y1), (x2, y2) = xy(box["lon"][0], box["lat"][1]), xy(box["lon"][1], box["lat"][0])
-    r = 18 * S
-    path = []
-    for (ax, ay), (bx, by) in [((x1 + r, y1), (x2 - r, y1)), ((x2, y1 + r), (x2, y2 - r)),
-                               ((x2 - r, y2), (x1 + r, y2)), ((x1, y2 - r), (x1, y1 + r))]:
-        path.append(((ax, ay), (bx, by)))
-    dash, gap = 9 * S, 7 * S
-    for (ax, ay), (bx, by) in path:
+    # Subtle translucent fill inside the archipelago frame
+    draw.rectangle([x1, y1, x2, y2], fill=fill_tint)
+
+    # Faint dashed hairlines along the sides
+    faint = colour[:3] + (85,)
+    dash, gap = 7 * S, 8 * S
+    for (ax, ay), (bx, by) in [((x1, y1), (x2, y1)), ((x2, y1), (x2, y2)),
+                               ((x2, y2), (x1, y2)), ((x1, y2), (x1, y1))]:
         length = math.hypot(bx - ax, by - ay)
         n = int(length // (dash + gap))
         for i in range(n + 1):
@@ -238,9 +350,14 @@ def dashed_box(draw, box, colour, width):
             if s0 >= length:
                 break
             draw.line([(ax + (bx - ax) * s0 / length, ay + (by - ay) * s0 / length),
-                       (ax + (bx - ax) * s1 / length, ay + (by - ay) * s1 / length)], fill=colour, width=width)
-    for cx, cy, start in [(x1 + r, y1 + r, 180), (x2 - r, y1 + r, 270), (x2 - r, y2 - r, 0), (x1 + r, y2 - r, 90)]:
-        draw.arc([cx - r, cy - r, cx + r, cy + r], start, start + 90, fill=colour, width=width)
+                       (ax + (bx - ax) * s1 / length, ay + (by - ay) * s1 / length)], fill=faint, width=S)
+
+    # Crisp solid L-shaped corner brackets
+    blen = 18 * S
+    bw = round(width * 1.4)
+    for cx, cy, sx, sy in [(x1, y1, 1, 1), (x2, y1, -1, 1), (x2, y2, -1, -1), (x1, y2, 1, -1)]:
+        draw.line([(cx, cy), (cx + sx * blen, cy)], fill=colour, width=bw)
+        draw.line([(cx, cy), (cx, cy + sy * blen)], fill=colour, width=bw)
 
 
 def label(draw, x, y, lines, fonts, colour, bg, anchor="la"):
@@ -252,15 +369,40 @@ def label(draw, x, y, lines, fonts, colour, bg, anchor="la"):
 
 
 def draw_map(canvas, rings, points, pal):
-    draw = ImageDraw.Draw(canvas)
-    # A faint graticule every 5 degrees on the map's half.
+    # Subtle graticule layer
+    grid_layer = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(grid_layer)
+    grid_col = pal["grid"] + (140,)
     for lon in range(105, 120, 5):
         x, _ = xy(lon, 0)
-        draw.line([(x, Y_TOP * S), (x, Y_BOT * S)], fill=pal["grid"], width=S)
+        gd.line([(x, Y_TOP * S), (x, Y_BOT * S)], fill=grid_col, width=S)
     for lat in range(10, 25, 5):
         _, y = xy(0, lat)
-        draw.line([(xy(102, 0)[0] - 40 * S, y), (X_E * S, y)], fill=pal["grid"], width=S)
-    # Land, then the gold coastline over it; the tiniest islands get a dot so they do not vanish.
+        gd.line([(xy(102, 0)[0] - 40 * S, y), (X_E * S, y)], fill=grid_col, width=S)
+    canvas.alpha_composite(grid_layer)
+
+    # Soft golden coastal glow layer
+    glow_layer = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
+    gld = ImageDraw.Draw(glow_layer)
+    coast_glow = pal["coast"] + (115,)
+    for ring in rings:
+        pts = [xy(lon, lat) for lon, lat in ring]
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
+        if max(xs) - min(xs) < 5 * S and max(ys) - min(ys) < 5 * S:
+            continue
+        gld.line(pts + [pts[0]], fill=coast_glow, width=round(5.0 * S), joint="curve")
+    glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(radius=7 * S))
+    canvas.alpha_composite(glow_layer)
+
+    # Main map layer: draw archipelago frames first so island beacons sit crisply on top
+    map_layer = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(map_layer)
+    frame_col = pal["coast"] + (210,)
+    fill_tint = pal["land"] + (42,)
+    modern_box(draw, HOANG_SA, frame_col, fill_tint, round(1.5 * S))
+    modern_box(draw, TRUONG_SA, frame_col, fill_tint, round(1.5 * S))
+
     for ring in rings:
         pts = [xy(lon, lat) for lon, lat in ring]
         xs = [p[0] for p in pts]
@@ -268,81 +410,64 @@ def draw_map(canvas, rings, points, pal):
         if max(xs) - min(xs) < 5 * S and max(ys) - min(ys) < 5 * S:
             cx, cy = sum(xs) / len(xs), sum(ys) / len(ys)
             r = 2.6 * S
-            draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=pal["island"])
+            draw.ellipse([cx - r * 1.9, cy - r * 1.9, cx + r * 1.9, cy + r * 1.9], fill=pal["island"] + (55,))
+            draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=pal["island"] + (255,))
             continue
-        draw.polygon(pts, fill=pal["land"])
-        draw.line(pts + [pts[0]], fill=pal["coast"], width=round(1.6 * S), joint="curve")
+        draw.polygon(pts, fill=pal["land"] + (235,))
+        draw.line(pts + [pts[0]], fill=pal["coast"] + (255,), width=round(1.6 * S), joint="curve")
+
+    # Archipelago island beacons
     for lon, lat in points + [(lon, lat) for _, lat, lon in ISLANDS]:
         cx, cy = xy(lon, lat)
         r = 2.6 * S
-        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=pal["island"])
-    dim = tuple(int(c * 0.78) for c in pal["coast"])
-    dashed_box(draw, HOANG_SA, dim, round(1.4 * S))
-    dashed_box(draw, TRUONG_SA, dim, round(1.4 * S))
+        draw.ellipse([cx - r * 2.1, cy - r * 2.1, cx + r * 2.1, cy + r * 2.1], fill=pal["island"] + (60,))
+        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=pal["island"] + (255,))
+
     bold, small = font(True, 21), font(False, 18)
-    # Hoang Sa: right of its box, above the dock band.
     hx, hy = xy(HOANG_SA["lon"][1], HOANG_SA["lat"][1])
-    label(draw, hx / S + 12, hy / S + 2, ["Quần đảo", "Hoàng Sa", "(Việt Nam)"], [bold, bold, small],
+    label(draw, hx / S + 14, hy / S + 2, ["Quần đảo", "Hoàng Sa", "(Việt Nam)"], [bold, bold, small],
           pal["ink"], pal["bg"])
-    # Truong Sa: left of its box, under the dock band.
     tx, ty = xy(TRUONG_SA["lon"][0], TRUONG_SA["lat"][0])
-    label(draw, tx / S - 14, ty / S - 92, ["Quần đảo", "Trường Sa", "(Việt Nam)"], [bold, bold, small],
+    label(draw, tx / S - 16, ty / S - 92, ["Quần đảo", "Trường Sa", "(Việt Nam)"], [bold, bold, small],
           pal["ink"], pal["bg"], anchor="ra")
-    # Near-shore islands and island districts, a dot on each (Natural Earth may draw them too small to see) and a
-    # small name beside it. Coordinates: the island's main town or centre, rounded to 0.01 degree.
+
+    # Coastal islands with subtle beacon rings
     tiny = font(False, 19)
     for name, lat, lon, dx, dy, anchor in COASTAL_ISLANDS:
         cx, cy = xy(lon, lat)
-        r = 3.2 * S
-        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=pal["island"])
+        r = 3.1 * S
+        draw.ellipse([cx - r * 1.9, cy - r * 1.9, cx + r * 1.9, cy + r * 1.9], outline=pal["island"] + (110,), width=S)
+        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=pal["island"] + (255,))
         draw.text((cx + dx * S, cy + dy * S), name, font=tiny, fill=pal["ink"], anchor=anchor,
                   stroke_width=2 * S, stroke_fill=pal["bg"])
-    # The sea's name, spaced out, between the coast and the two groups.
+
+    # Sea label
     sx, sy = xy(112.6, 14.2)
     draw.text((sx, sy), "B I Ể N   Đ Ô N G", font=font(True, 25), fill=pal["sea"], anchor="mm",
               stroke_width=2 * S, stroke_fill=pal["bg"])
 
+    canvas.alpha_composite(map_layer)
 
-def stylised_star(canvas, cx, cy, outer, bg):
-    """A gold star in the drum-face manner: concentric rings with small dots, thin rays between the points, the
-    star filled in a muted gold with a brighter rim and an inner outline star. Kept dim so the clock and the dock
-    title stay readable over it."""
-    draw = ImageDraw.Draw(canvas)
 
-    def mix(t):  # gold blended into the background, t = share of gold
-        return tuple(round(b + (g - b) * t) for g, b in zip(GOLD, bg))
-
-    for rr, w, t in [(1.30, 2.0, 0.28), (1.20, 1.2, 0.22), (1.10, 1.2, 0.18)]:
-        r = outer * rr
-        draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=mix(t), width=round(w * S))
-    n = 40
-    for i in range(n):  # a ring of small dots between the two outer rings
-        a = 2 * math.pi * i / n
-        r = outer * 1.25
-        x, y = cx + r * math.cos(a), cy + r * math.sin(a)
-        d = 2.4 * S
-        draw.ellipse([x - d, y - d, x + d, y + d], fill=mix(0.30))
-    for i in range(5):  # rays in the gaps between the points
-        a = math.radians(-90 + 36 + 72 * i)
-        draw.line([(cx + outer * 0.62 * math.cos(a), cy + outer * 0.62 * math.sin(a)),
-                   (cx + outer * 1.12 * math.cos(a), cy + outer * 1.12 * math.sin(a))], fill=mix(0.26),
-                  width=round(1.6 * S))
-    pts = star(cx, cy, outer)
-    draw.polygon(pts, fill=mix(0.34))
-    draw.line(pts + [pts[0]], fill=mix(0.62), width=round(2.4 * S), joint="curve")
-    inner = star(cx, cy, outer * 0.55)
-    draw.line(inner + [inner[0]], fill=mix(0.46), width=round(1.4 * S), joint="curve")
+def apply_ui_vignette(img, pal):
+    """Smooth Gaussian-softened bottom shade so the dock stays crisp and legible."""
+    mask = Image.new("L", (W, H), 0)
+    md = ImageDraw.Draw(mask)
+    md.rectangle([0, 910, W, H], fill=135)
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=75))
+    return Image.composite(Image.new("RGB", (W, H), pal["bg"]), img, mask)
 
 
 def picture(pal, rings, points):
-    canvas = Image.new("RGB", (W * S, H * S), pal["bg"])
+    backdrop = make_backdrop(pal).convert("RGBA")
+    canvas = Image.new("RGBA", (W * S, H * S), (0, 0, 0, 0))
     if pal["flag"]:
         waving_flag(canvas, pal)
     if pal.get("mark"):
-        # No flag: a stylised gold five-pointed star on the left.
-        stylised_star(canvas, 450 * S, 600 * S, 215 * S, pal["bg"])
+        stylised_star(canvas, 450 * S, 580 * S, 215 * S, pal)
     draw_map(canvas, rings, points, pal)
-    return canvas.resize((W, H), Image.LANCZOS)
+    composed = Image.alpha_composite(backdrop, canvas.resize((W, H), Image.LANCZOS)).convert("RGB")
+    return apply_ui_vignette(composed, pal)
 
 
 def with_dock(img):
@@ -364,7 +489,7 @@ def main():
     pictures = {}
     for name, pal in PALETTES.items():
         img = picture(pal, rings, points)
-        img.save(out / name, "JPEG", quality=82, optimize=True, progressive=False)   # baseline: faster to decode on the TV
+        img.save(out / name, "JPEG", quality=84, optimize=True, progressive=False)   # baseline: faster to decode on the TV
         pictures[name] = img
         print(name, (out / name).stat().st_size // 1024, "KB")
         if args.preview:
