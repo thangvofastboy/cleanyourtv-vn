@@ -161,6 +161,20 @@ def load(folder):
     return rings, points
 
 
+COASTAL_ISLANDS = [  # name, lat, lon, label offset x/y in 1x px, anchor
+    ("Cô Tô", 20.98, 107.77, 8, -6, "ls"),
+    ("Cát Bà", 20.80, 107.03, 8, 10, "lt"),
+    ("Bạch Long Vĩ", 20.13, 107.72, 8, 0, "lm"),
+    ("Cồn Cỏ", 17.16, 107.34, 8, 0, "lm"),
+    ("Lý Sơn", 15.38, 109.12, 8, 0, "lm"),
+    ("Phú Quý", 10.52, 108.93, 8, 0, "lm"),
+    ("Côn Đảo", 8.69, 106.61, 8, 0, "lm"),
+    ("Phú Quốc", 10.23, 103.96, -8, 0, "rm"),
+    ("Nam Du", 9.68, 104.35, -8, 0, "rm"),
+    ("Thổ Chu", 9.30, 103.48, 0, 8, "mt"),
+]
+
+
 def inside(box, lon, lat):
     return box["lon"][0] <= lon <= box["lon"][1] and box["lat"][0] <= lat <= box["lat"][1]
 
@@ -274,10 +288,50 @@ def draw_map(canvas, rings, points, pal):
     tx, ty = xy(TRUONG_SA["lon"][0], TRUONG_SA["lat"][0])
     label(draw, tx / S - 14, ty / S - 92, ["Quần đảo", "Trường Sa", "(Việt Nam)"], [bold, bold, small],
           pal["ink"], pal["bg"], anchor="ra")
+    # Near-shore islands and island districts, a dot on each (Natural Earth may draw them too small to see) and a
+    # small name beside it. Coordinates: the island's main town or centre, rounded to 0.01 degree.
+    tiny = font(False, 19)
+    for name, lat, lon, dx, dy, anchor in COASTAL_ISLANDS:
+        cx, cy = xy(lon, lat)
+        r = 3.2 * S
+        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=pal["island"])
+        draw.text((cx + dx * S, cy + dy * S), name, font=tiny, fill=pal["ink"], anchor=anchor,
+                  stroke_width=2 * S, stroke_fill=pal["bg"])
     # The sea's name, spaced out, between the coast and the two groups.
     sx, sy = xy(112.6, 14.2)
     draw.text((sx, sy), "B I Ể N   Đ Ô N G", font=font(True, 25), fill=pal["sea"], anchor="mm",
               stroke_width=2 * S, stroke_fill=pal["bg"])
+
+
+def stylised_star(canvas, cx, cy, outer, bg):
+    """A gold star in the drum-face manner: concentric rings with small dots, thin rays between the points, the
+    star filled in a muted gold with a brighter rim and an inner outline star. Kept dim so the clock and the dock
+    title stay readable over it."""
+    draw = ImageDraw.Draw(canvas)
+
+    def mix(t):  # gold blended into the background, t = share of gold
+        return tuple(round(b + (g - b) * t) for g, b in zip(GOLD, bg))
+
+    for rr, w, t in [(1.30, 2.0, 0.28), (1.20, 1.2, 0.22), (1.10, 1.2, 0.18)]:
+        r = outer * rr
+        draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=mix(t), width=round(w * S))
+    n = 40
+    for i in range(n):  # a ring of small dots between the two outer rings
+        a = 2 * math.pi * i / n
+        r = outer * 1.25
+        x, y = cx + r * math.cos(a), cy + r * math.sin(a)
+        d = 2.4 * S
+        draw.ellipse([x - d, y - d, x + d, y + d], fill=mix(0.30))
+    for i in range(5):  # rays in the gaps between the points
+        a = math.radians(-90 + 36 + 72 * i)
+        draw.line([(cx + outer * 0.62 * math.cos(a), cy + outer * 0.62 * math.sin(a)),
+                   (cx + outer * 1.12 * math.cos(a), cy + outer * 1.12 * math.sin(a))], fill=mix(0.26),
+                  width=round(1.6 * S))
+    pts = star(cx, cy, outer)
+    draw.polygon(pts, fill=mix(0.34))
+    draw.line(pts + [pts[0]], fill=mix(0.62), width=round(2.4 * S), joint="curve")
+    inner = star(cx, cy, outer * 0.55)
+    draw.line(inner + [inner[0]], fill=mix(0.46), width=round(1.4 * S), joint="curve")
 
 
 def picture(pal, rings, points):
@@ -285,8 +339,8 @@ def picture(pal, rings, points):
     if pal["flag"]:
         waving_flag(canvas, pal)
     if pal.get("mark"):
-        # No flag: the flag's star alone, large and barely lighter than the ground, behind the clock and greeting.
-        ImageDraw.Draw(canvas).polygon(star(470 * S, 560 * S, 330 * S), fill=pal["mark"])
+        # No flag: a stylised gold five-pointed star on the left.
+        stylised_star(canvas, 450 * S, 600 * S, 215 * S, pal["bg"])
     draw_map(canvas, rings, points, pal)
     return canvas.resize((W, H), Image.LANCZOS)
 

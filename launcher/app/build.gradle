@@ -15,8 +15,8 @@ android {
         targetSdk 34
         // This fork (thangvofastboy/cleanyourtv-vn): 1000 and up, far above upstream's 14, so the in-app update
         // compares against its own releases. Release asset: cleanyourtv-vn-<versionCode>.apk, tag v<versionName>.
-        versionCode 1002
-        versionName '1.0.2-vn'
+        versionCode 1003
+        versionName '1.0.3-vn'
     }
 
     buildTypes {
